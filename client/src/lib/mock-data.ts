@@ -8,7 +8,8 @@ export interface PNM {
   tags: string[];
   avatar: string;
   status: 'unmatched' | 'matched';
-  matchedWith?: string; // activeId
+  matchedWith?: string; // activeId 1
+  secondMatch?: string; // activeId 2
 }
 
 export interface Active {
