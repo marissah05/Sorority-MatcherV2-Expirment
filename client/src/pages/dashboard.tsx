@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, ClipboardPaste, UserPlus, Layers, UserCheck } from "lucide-react";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Search, ClipboardPaste, UserPlus, Layers, UserCheck, Users } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -31,31 +32,25 @@ export default function Dashboard() {
   const [rounds, setRounds] = useState<RoundData[]>([
     { id: "r1", name: "Round 1", pnms: MOCK_PNMS },
     { id: "r2", name: "Round 2", pnms: MOCK_PNMS.slice(0, 2) },
-    { id: "r3", name: "Round 3", pnms: [] },
   ]);
   const [activeRoundId, setActiveRoundId] = useState("r1");
-  const [actives] = useState<Active[]>(MOCK_ACTIVES);
+  const [actives, setActives] = useState<Active[]>(MOCK_ACTIVES);
   const [draggingActiveId, setDraggingActiveId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [pasteData, setPasteData] = useState("");
-  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [pnmPasteData, setPnmPasteData] = useState("");
+  const [activePasteData, setActivePasteData] = useState("");
+  const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
+  const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
 
-  // Track which actives are used in which bump slot
-  const usedActivesSlot1 = useMemo(() => {
-    return new Set(activeRound.pnms.map(p => p.matchedWith).filter(Boolean));
-  }, [activeRound]);
+  const usedActivesSlot1 = useMemo(() => new Set(activeRound.pnms.map(p => p.matchedWith).filter(Boolean)), [activeRound]);
+  const usedActivesSlot2 = useMemo(() => new Set(activeRound.pnms.map(p => p.secondMatch).filter(Boolean)), [activeRound]);
 
-  const usedActivesSlot2 = useMemo(() => {
-    return new Set(activeRound.pnms.map(p => p.secondMatch).filter(Boolean));
-  }, [activeRound]);
-
-  const handleImport = () => {
-    if (!pasteData.trim()) return;
-    const lines = pasteData.split('\n');
+  const handlePnmImport = () => {
+    if (!pnmPasteData.trim()) return;
+    const lines = pnmPasteData.split('\n');
     const newPnms: PNM[] = lines.map((line, index) => {
       const parts = line.split(/[,\t]/).map(p => p.trim());
       return {
@@ -65,31 +60,31 @@ export default function Dashboard() {
         status: 'unmatched'
       };
     });
+    setRounds(prev => prev.map(r => r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r));
+    setPnmPasteData("");
+    setIsPnmImportOpen(false);
+  };
 
-    setRounds(prev => prev.map(r => 
-      r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r
-    ));
-    setPasteData("");
-    setIsImportOpen(false);
+  const handleActiveImport = () => {
+    if (!activePasteData.trim()) return;
+    const lines = activePasteData.split('\n');
+    const newActives: Active[] = lines.map((line, index) => ({
+      id: `a-${Date.now()}-${index}`,
+      name: line.trim()
+    })).filter(a => a.name);
+    setActives(prev => [...prev, ...newActives]);
+    setActivePasteData("");
+    setIsActiveImportOpen(false);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setDraggingActiveId(null);
-
     if (over) {
       const activeId = active.id as string;
-      // The active ID might be suffixed with -1 or -2 if we needed unique IDs, 
-      // but since they are the same member, we strip any suffixes if present 
-      // (though here we just use the original ID and suffix the draggable component ID)
       const realActiveId = activeId.split('-')[0];
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
       
-      const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
-      if (!pnm) return;
-
-      if (pnm.matchedWith === realActiveId || pnm.secondMatch === realActiveId) return;
-
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
         return {
@@ -122,154 +117,129 @@ export default function Dashboard() {
     }));
   };
 
-  const filteredPnms = activeRound.pnms.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.idNumber.includes(searchTerm)
-  );
+  const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col font-sans overflow-hidden">
-      <header className="bg-white border-b px-4 py-2 flex justify-between items-center shrink-0">
+    <div className="h-screen bg-slate-50 flex flex-col font-sans overflow-hidden text-[12px]">
+      <header className="bg-white border-b px-4 py-1.5 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-4">
-          <h1 className="font-bold text-lg text-primary">Bump Planner Pro</h1>
+          <h1 className="font-bold text-base text-primary">Bump Planner Pro</h1>
           <Tabs value={activeRoundId} onValueChange={setActiveRoundId} className="w-auto">
-            <TabsList className="h-8 bg-slate-100">
+            <TabsList className="h-7 bg-slate-100 p-0.5">
               {rounds.map(r => (
-                <TabsTrigger key={r.id} value={r.id} className="text-xs px-4 h-7">
+                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3 h-6">
                   {r.name}
                 </TabsTrigger>
               ))}
-              <Button 
-                variant="ghost" 
-                className="h-7 w-7 p-0 ml-1 hover:bg-white"
-                onClick={() => setRounds(prev => [...prev, { id: `r${prev.length + 1}`, name: `Round ${prev.length + 1}`, pnms: [] }])}
-              >
-                +
-              </Button>
+              <Button variant="ghost" className="h-6 w-6 p-0 ml-0.5 hover:bg-white" onClick={() => setRounds(prev => [...prev, { id: `r${prev.length + 1}`, name: `Round ${prev.length + 1}`, pnms: [] }])}>+</Button>
             </TabsList>
           </Tabs>
         </div>
         
-        <div className="flex gap-2">
-          <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm"><ClipboardPaste className="w-3 h-3 mr-1.5" /> Import for {activeRound.name}</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Import to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
-              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px]" value={pasteData} onChange={(e) => setPasteData(e.target.value)} />
-              <Button onClick={handleImport} className="w-full">Add PNMs to Round</Button>
+        <div className="flex gap-1.5">
+          <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px]"><Users className="w-3 h-3 mr-1" /> Import Actives</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader><DialogTitle>Import Active Members</DialogTitle><DialogDescription>Paste names (one per line)</DialogDescription></DialogHeader>
+              <Textarea placeholder="Sarah Jenkins&#10;Jessica Reynolds" className="min-h-[200px] text-xs" value={activePasteData} onChange={(e) => setActivePasteData(e.target.value)} />
+              <Button onClick={handleActiveImport} className="w-full h-8 text-xs">Add Actives</Button>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px]"><ClipboardPaste className="w-3 h-3 mr-1" /> Import PNMs</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
+              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
+              <Button onClick={handlePnmImport} className="w-full h-8 text-xs">Add PNMs to Round</Button>
             </DialogContent>
           </Dialog>
         </div>
       </header>
 
       <DndContext sensors={sensors} onDragStart={(e) => setDraggingActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="p-2 border-b bg-white flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-1">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search current round..." className="h-8 text-sm max-w-xs bg-slate-50/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+          <ResizablePanel defaultSize={75} minSize={30}>
+            <div className="h-full flex flex-col bg-white">
+              <div className="p-1.5 border-b flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Search PNMs..." className="h-7 text-[12px] max-w-xs py-0" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                <Badge variant="outline" className="text-[10px] h-5 py-0">{activeRound.pnms.length} PNMs</Badge>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] font-normal">{activeRound.pnms.length} PNMs in Round</Badge>
-              </div>
-            </div>
-            
-            <ScrollArea className="flex-1">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="py-2 h-9 text-xs uppercase tracking-wider font-bold">PNM Name & ID</TableHead>
-                    <TableHead className="py-2 h-9 text-xs uppercase tracking-wider font-bold">Bump Match 1</TableHead>
-                    <TableHead className="py-2 h-9 text-xs uppercase tracking-wider font-bold">Bump Match 2</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPnms.map(pnm => (
-                    <TableRow key={pnm.id} className="h-12 border-b-slate-100 hover:bg-white/80 transition-colors">
-                      <TableCell className="py-1">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold">{pnm.name}</span>
-                          <span className="text-[10px] text-muted-foreground">ID: {pnm.idNumber}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1">
-                        <PNMDropZone 
-                          pnm={pnm} 
-                          slot={1} 
-                          matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name}
-                          onUnmatch={handleUnmatch}
-                        />
-                      </TableCell>
-                      <TableCell className="py-1">
-                        <PNMDropZone 
-                          pnm={pnm} 
-                          slot={2} 
-                          matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name}
-                          onUnmatch={handleUnmatch}
-                        />
-                      </TableCell>
+              
+              <ScrollArea className="flex-1">
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
-
-          {/* Active Members Dock - Two Columns */}
-          <div className="w-80 border-l bg-slate-100/50 p-3 shrink-0 flex flex-col">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Active Members Pool</h3>
-              <UserCheck className="h-3 w-3 text-slate-400" />
-            </div>
-            
-            <div className="flex-1 flex gap-2 overflow-hidden">
-              {/* Column 1 for Slot 1 */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="text-[9px] font-bold text-center text-slate-400 uppercase mb-2">Match 1 Pool</div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-1 pr-1">
-                    {actives.map(active => (
-                      <ActiveDraggable 
-                        key={`${active.id}-1`} 
-                        active={{ ...active, id: `${active.id}-1` }}
-                        isMatched={usedActivesSlot1.has(active.id)}
-                      />
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPnms.map(pnm => (
+                      <TableRow key={pnm.id} className="h-9 border-b-slate-100 hover:bg-slate-50 transition-colors">
+                        <TableCell className="py-0.5">
+                          <div className="flex flex-col">
+                            <span className="text-[12px] font-semibold leading-tight">{pnm.name}</span>
+                            <span className="text-[9px] text-muted-foreground">ID: {pnm.idNumber}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-0.5">
+                          <PNMDropZone pnm={pnm} slot={1} matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name} onUnmatch={handleUnmatch} />
+                        </TableCell>
+                        <TableCell className="py-0.5">
+                          <PNMDropZone pnm={pnm} slot={2} matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} onUnmatch={handleUnmatch} />
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                </ScrollArea>
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={25} minSize={15}>
+            <div className="h-full bg-slate-100/50 p-2 flex flex-col">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active Pool</h3>
+                <UserCheck className="h-3 w-3 text-slate-400" />
               </div>
-
-              <div className="w-[1px] bg-slate-200" />
-
-              {/* Column 2 for Slot 2 */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="text-[9px] font-bold text-center text-slate-400 uppercase mb-2">Match 2 Pool</div>
-                <ScrollArea className="flex-1">
-                  <div className="space-y-1 pr-1">
-                    {actives.map(active => (
-                      <ActiveDraggable 
-                        key={`${active.id}-2`} 
-                        active={{ ...active, id: `${active.id}-2` }}
-                        isMatched={usedActivesSlot2.has(active.id)}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
+              
+              <div className="flex-1 flex gap-1.5 overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1">M1 Pool</div>
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-1 pr-1">
+                      {actives.map(active => (
+                        <ActiveDraggable key={`${active.id}-1`} active={{ ...active, id: `${active.id}-1` }} isMatched={usedActivesSlot1.has(active.id)} />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+                <div className="w-[1px] bg-slate-200" />
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1">M2 Pool</div>
+                  <ScrollArea className="flex-1">
+                    <div className="space-y-1 pr-1">
+                      {actives.map(active => (
+                        <ActiveDraggable key={`${active.id}-2`} active={{ ...active, id: `${active.id}-2` }} isMatched={usedActivesSlot2.has(active.id)} />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
               </div>
             </div>
-
-            <div className="mt-4 p-2 bg-primary/5 rounded border border-primary/10">
-              <p className="text-[9px] leading-tight text-slate-500 italic">
-                Actives grey out once assigned to a slot in this round.
-              </p>
-            </div>
-          </div>
-        </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
         
         <DragOverlay>
           {draggingActiveId ? (
-            <div className="py-1.5 px-3 rounded-md border border-primary bg-white text-sm font-semibold shadow-xl opacity-90 scale-105">
+            <div className="py-1 px-2 rounded border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105">
               {actives.find(a => a.id === draggingActiveId.split('-')[0])?.name}
             </div>
           ) : null}
