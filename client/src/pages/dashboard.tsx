@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, ClipboardPaste, UserPlus, Layers } from "lucide-react";
+import { Search, ClipboardPaste, UserPlus, Layers, UserCheck } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -43,6 +43,15 @@ export default function Dashboard() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
+
+  // Track which actives are used in which bump slot
+  const usedActivesSlot1 = useMemo(() => {
+    return new Set(activeRound.pnms.map(p => p.matchedWith).filter(Boolean));
+  }, [activeRound]);
+
+  const usedActivesSlot2 = useMemo(() => {
+    return new Set(activeRound.pnms.map(p => p.secondMatch).filter(Boolean));
+  }, [activeRound]);
 
   const handleImport = () => {
     if (!pasteData.trim()) return;
@@ -70,15 +79,17 @@ export default function Dashboard() {
 
     if (over) {
       const activeId = active.id as string;
+      // The active ID might be suffixed with -1 or -2 if we needed unique IDs, 
+      // but since they are the same member, we strip any suffixes if present 
+      // (though here we just use the original ID and suffix the draggable component ID)
+      const realActiveId = activeId.split('-')[0];
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
       
-      // Check if this active is already used in THIS ROUND for THIS PNM
       const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
       if (!pnm) return;
 
-      if (pnm.matchedWith === activeId || pnm.secondMatch === activeId) return;
+      if (pnm.matchedWith === realActiveId || pnm.secondMatch === realActiveId) return;
 
-      // Update round PNMs
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
         return {
@@ -88,7 +99,7 @@ export default function Dashboard() {
             return {
               ...p,
               status: 'matched',
-              [overData.slot === 1 ? 'matchedWith' : 'secondMatch']: activeId
+              [overData.slot === 1 ? 'matchedWith' : 'secondMatch']: realActiveId
             };
           })
         };
@@ -205,24 +216,52 @@ export default function Dashboard() {
             </ScrollArea>
           </div>
 
-          <div className="w-64 border-l bg-slate-100/50 p-3 shrink-0 flex flex-col">
+          {/* Active Members Dock - Two Columns */}
+          <div className="w-80 border-l bg-slate-100/50 p-3 shrink-0 flex flex-col">
             <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Active Members</h3>
-              <Layers className="h-3 w-3 text-slate-400" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Active Members Pool</h3>
+              <UserCheck className="h-3 w-3 text-slate-400" />
             </div>
-            <ScrollArea className="flex-1">
-              <div className="space-y-1.5 pr-2">
-                {actives.map(active => (
-                  <ActiveDraggable 
-                    key={active.id} 
-                    active={active}
-                  />
-                ))}
+            
+            <div className="flex-1 flex gap-2 overflow-hidden">
+              {/* Column 1 for Slot 1 */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="text-[9px] font-bold text-center text-slate-400 uppercase mb-2">Match 1 Pool</div>
+                <ScrollArea className="flex-1">
+                  <div className="space-y-1 pr-1">
+                    {actives.map(active => (
+                      <ActiveDraggable 
+                        key={`${active.id}-1`} 
+                        active={{ ...active, id: `${active.id}-1` }}
+                        isMatched={usedActivesSlot1.has(active.id)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
-            </ScrollArea>
-            <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
-              <p className="text-[10px] leading-relaxed text-slate-600 italic">
-                Tip: Drag actives into the empty slots to build your bump pairs.
+
+              <div className="w-[1px] bg-slate-200" />
+
+              {/* Column 2 for Slot 2 */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="text-[9px] font-bold text-center text-slate-400 uppercase mb-2">Match 2 Pool</div>
+                <ScrollArea className="flex-1">
+                  <div className="space-y-1 pr-1">
+                    {actives.map(active => (
+                      <ActiveDraggable 
+                        key={`${active.id}-2`} 
+                        active={{ ...active, id: `${active.id}-2` }}
+                        isMatched={usedActivesSlot2.has(active.id)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
+            <div className="mt-4 p-2 bg-primary/5 rounded border border-primary/10">
+              <p className="text-[9px] leading-tight text-slate-500 italic">
+                Actives grey out once assigned to a slot in this round.
               </p>
             </div>
           </div>
@@ -231,7 +270,7 @@ export default function Dashboard() {
         <DragOverlay>
           {draggingActiveId ? (
             <div className="py-1.5 px-3 rounded-md border border-primary bg-white text-sm font-semibold shadow-xl opacity-90 scale-105">
-              {actives.find(a => a.id === draggingActiveId)?.name}
+              {actives.find(a => a.id === draggingActiveId.split('-')[0])?.name}
             </div>
           ) : null}
         </DragOverlay>
