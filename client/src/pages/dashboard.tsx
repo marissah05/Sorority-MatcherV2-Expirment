@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserPlus, Layers, UserCheck, Users } from "lucide-react";
+import { Search, ClipboardPaste, Layers, UserCheck, Users, Trash2 } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -75,6 +75,16 @@ export default function Dashboard() {
     setActives(prev => [...prev, ...newActives]);
     setActivePasteData("");
     setIsActiveImportOpen(false);
+  };
+
+  const handleDeletePnm = (pnmId: string) => {
+    setRounds(prev => prev.map(r => {
+      if (r.id !== activeRoundId) return r;
+      return {
+        ...r,
+        pnms: r.pnms.filter(p => p.id !== pnmId)
+      };
+    }));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -185,6 +195,7 @@ export default function Dashboard() {
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -201,6 +212,16 @@ export default function Dashboard() {
                         </TableCell>
                         <TableCell className="py-0.5">
                           <PNMDropZone pnm={pnm} slot={2} matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} onUnmatch={handleUnmatch} />
+                        </TableCell>
+                        <TableCell className="py-0.5">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
+                            onClick={() => handleDeletePnm(pnm.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
