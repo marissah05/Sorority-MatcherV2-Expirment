@@ -6,11 +6,19 @@ import {
   useSensors, 
   PointerSensor, 
   DragStartEvent, 
-  DragEndEvent 
+  DragEndEvent,
+  closestCenter,
+  defaultDropAnimationSideEffects
 } from "@dnd-kit/core";
+import { 
+  arrayMove, 
+  SortableContext, 
+  verticalListSortingStrategy 
+} from "@dnd-kit/sortable";
 import { MOCK_PNMS, MOCK_ACTIVES, PNM, Active } from "@/lib/mock-data";
 import ActiveDraggable from "@/components/recruitment/ActiveDraggable";
 import PNMDropZone from "@/components/recruitment/PNMDropZone";
+import SortablePNMRow from "@/components/recruitment/SortablePNMRow";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, Layers, UserCheck, Users, Trash2 } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2 } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -35,7 +43,8 @@ export default function Dashboard() {
   ]);
   const [activeRoundId, setActiveRoundId] = useState("r1");
   const [actives, setActives] = useState<Active[]>(MOCK_ACTIVES);
-  const [draggingActiveId, setDraggingActiveId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingType, setDraggingType] = useState<'active' | 'pnm' | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pnmPasteData, setPnmPasteData] = useState("");
   const [activePasteData, setActivePasteData] = useState("");
@@ -87,10 +96,22 @@ export default function Dashboard() {
     }));
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setDraggingId(active.id as string);
+    // Actives have IDs starting with 'a-' or suffix like '-1', PNMs start with 'p-'
+    setDraggingType(active.id.toString().includes('p-') ? 'pnm' : 'active');
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setDraggingActiveId(null);
-    if (over) {
+    setDraggingId(null);
+    setDraggingType(null);
+
+    if (!over) return;
+
+    // Handle Active dragging to PNM drop zone
+    if (draggingType === 'active' && over.id.toString().startsWith('drop-')) {
       const activeId = active.id as string;
       const realActiveId = activeId.split('-')[0];
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
@@ -116,6 +137,19 @@ export default function Dashboard() {
               [slotKey]: realActiveId
             };
           })
+        };
+      }));
+    }
+
+    // Handle PNM reordering
+    if (draggingType === 'pnm' && active.id !== over.id) {
+      setRounds(prev => prev.map(r => {
+        if (r.id !== activeRoundId) return r;
+        const oldIndex = r.pnms.findIndex(p => p.id === active.id);
+        const newIndex = r.pnms.findIndex(p => p.id === over.id);
+        return {
+          ...r,
+          pnms: arrayMove(r.pnms, oldIndex, newIndex)
         };
       }));
     }
@@ -176,7 +210,12 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <DndContext sensors={sensors} onDragStart={(e) => setDraggingActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
+      <DndContext 
+        sensors={sensors} 
+        onDragStart={handleDragStart} 
+        onDragEnd={handleDragEnd}
+        collisionDetection={closestCenter}
+      >
         <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
           <ResizablePanel defaultSize={75} minSize={30}>
             <div className="h-full flex flex-col bg-white">
@@ -190,8 +229,9 @@ export default function Dashboard() {
               
               <ScrollArea className="flex-1">
                 <Table className="rounded-none">
-                  <TableHeader className="bg-slate-50/50">
+                  <TableHeader className="bg-slate-50/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-8"></TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
@@ -199,32 +239,20 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPnms.map(pnm => (
-                      <TableRow key={pnm.id} className="h-9 border-b-slate-100 hover:bg-slate-50 transition-colors">
-                        <TableCell className="py-0.5">
-                          <div className="flex flex-col">
-                            <span className="text-[12px] font-semibold leading-tight">{pnm.name}</span>
-                            <span className="text-[9px] text-muted-foreground">ID: {pnm.idNumber}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-0.5">
-                          <PNMDropZone pnm={pnm} slot={1} matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name} onUnmatch={handleUnmatch} />
-                        </TableCell>
-                        <TableCell className="py-0.5">
-                          <PNMDropZone pnm={pnm} slot={2} matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} onUnmatch={handleUnmatch} />
-                        </TableCell>
-                        <TableCell className="py-0.5">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
-                            onClick={() => handleDeletePnm(pnm.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    <SortableContext 
+                      items={filteredPnms.map(p => p.id)} 
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {filteredPnms.map(pnm => (
+                        <SortablePNMRow 
+                          key={pnm.id} 
+                          pnm={pnm} 
+                          actives={actives} 
+                          onUnmatch={handleUnmatch} 
+                          onDelete={handleDeletePnm} 
+                        />
+                      ))}
+                    </SortableContext>
                   </TableBody>
                 </Table>
               </ScrollArea>
@@ -267,11 +295,25 @@ export default function Dashboard() {
           </ResizablePanel>
         </ResizablePanelGroup>
         
-        <DragOverlay>
-          {draggingActiveId ? (
-            <div className="py-1 px-2 border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105 rounded-none">
-              {actives.find(a => a.id === draggingActiveId.split('-')[0])?.name}
-            </div>
+        <DragOverlay dropAnimation={{
+          sideEffects: defaultDropAnimationSideEffects({
+            styles: {
+              active: {
+                opacity: '0.5',
+              },
+            },
+          }),
+        }}>
+          {draggingId ? (
+            draggingType === 'pnm' ? (
+              <div className="w-full bg-white border border-primary shadow-2xl opacity-90 p-2 text-xs font-semibold">
+                {activeRound.pnms.find(p => p.id === draggingId)?.name}
+              </div>
+            ) : (
+              <div className="py-1 px-2 border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105 rounded-none">
+                {actives.find(a => a.id === draggingId.split('-')[0])?.name}
+              </div>
+            )
           ) : null}
         </DragOverlay>
       </DndContext>
