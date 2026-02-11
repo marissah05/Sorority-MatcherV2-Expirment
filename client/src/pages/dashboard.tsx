@@ -4,9 +4,9 @@ import {
   DragOverlay, 
   useSensor, 
   useSensors, 
-  PointerSensor,
-  DragStartEvent,
-  DragEndEvent
+  PointerSensor, 
+  DragStartEvent, 
+  DragEndEvent 
 } from "@dnd-kit/core";
 import { MOCK_PNMS, MOCK_ACTIVES, PNM, Active } from "@/lib/mock-data";
 import ActiveDraggable from "@/components/recruitment/ActiveDraggable";
@@ -84,7 +84,16 @@ export default function Dashboard() {
       const activeId = active.id as string;
       const realActiveId = activeId.split('-')[0];
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
+      const slotKey = overData.slot === 1 ? 'matchedWith' : 'secondMatch';
       
+      const alreadyUsedInSlot = activeRound.pnms.some(p => p[slotKey] === realActiveId);
+      if (alreadyUsedInSlot) return;
+
+      const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
+      if (!pnm) return;
+      
+      if (pnm.matchedWith === realActiveId || pnm.secondMatch === realActiveId) return;
+
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
         return {
@@ -94,7 +103,7 @@ export default function Dashboard() {
             return {
               ...p,
               status: 'matched',
-              [overData.slot === 1 ? 'matchedWith' : 'secondMatch']: realActiveId
+              [slotKey]: realActiveId
             };
           })
         };
@@ -125,33 +134,33 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <h1 className="font-bold text-base text-primary">Bump Planner Pro</h1>
           <Tabs value={activeRoundId} onValueChange={setActiveRoundId} className="w-auto">
-            <TabsList className="h-7 bg-slate-100 p-0.5">
+            <TabsList className="h-7 bg-slate-100 p-0.5 rounded-none">
               {rounds.map(r => (
-                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3 h-6">
+                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3 h-6 rounded-none">
                   {r.name}
                 </TabsTrigger>
               ))}
-              <Button variant="ghost" className="h-6 w-6 p-0 ml-0.5 hover:bg-white" onClick={() => setRounds(prev => [...prev, { id: `r${prev.length + 1}`, name: `Round ${prev.length + 1}`, pnms: [] }])}>+</Button>
+              <Button variant="ghost" className="h-6 w-6 p-0 ml-0.5 hover:bg-white rounded-none" onClick={() => setRounds(prev => [...prev, { id: `r${prev.length + 1}`, name: `Round ${prev.length + 1}`, pnms: [] }])}>+</Button>
             </TabsList>
           </Tabs>
         </div>
         
         <div className="flex gap-1.5">
           <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px]"><Users className="w-3 h-3 mr-1" /> Import Actives</Button></DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><Users className="w-3 h-3 mr-1" /> Import Actives</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md rounded-none">
               <DialogHeader><DialogTitle>Import Active Members</DialogTitle><DialogDescription>Paste names (one per line)</DialogDescription></DialogHeader>
-              <Textarea placeholder="Sarah Jenkins&#10;Jessica Reynolds" className="min-h-[200px] text-xs" value={activePasteData} onChange={(e) => setActivePasteData(e.target.value)} />
-              <Button onClick={handleActiveImport} className="w-full h-8 text-xs">Add Actives</Button>
+              <Textarea placeholder="Sarah Jenkins&#10;Jessica Reynolds" className="min-h-[200px] text-xs rounded-none" value={activePasteData} onChange={(e) => setActivePasteData(e.target.value)} />
+              <Button onClick={handleActiveImport} className="w-full h-8 text-xs rounded-none">Add Actives</Button>
             </DialogContent>
           </Dialog>
 
           <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px]"><ClipboardPaste className="w-3 h-3 mr-1" /> Import PNMs</Button></DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><ClipboardPaste className="w-3 h-3 mr-1" /> Import PNMs</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md rounded-none">
               <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
-              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
-              <Button onClick={handlePnmImport} className="w-full h-8 text-xs">Add PNMs to Round</Button>
+              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
+              <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
             </DialogContent>
           </Dialog>
         </div>
@@ -164,13 +173,13 @@ export default function Dashboard() {
               <div className="p-1.5 border-b flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1">
                   <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Search PNMs..." className="h-7 text-[12px] max-w-xs py-0" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <Input placeholder="Search PNMs..." className="h-7 text-[12px] max-w-xs py-0 rounded-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
-                <Badge variant="outline" className="text-[10px] h-5 py-0">{activeRound.pnms.length} PNMs</Badge>
+                <Badge variant="outline" className="text-[10px] h-5 py-0 rounded-none">{activeRound.pnms.length} PNMs</Badge>
               </div>
               
               <ScrollArea className="flex-1">
-                <Table>
+                <Table className="rounded-none">
                   <TableHeader className="bg-slate-50/50">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
@@ -201,7 +210,7 @@ export default function Dashboard() {
             </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle />
+          <ResizableHandle withHandle className="bg-slate-200" />
 
           <ResizablePanel defaultSize={25} minSize={15}>
             <div className="h-full bg-slate-100/50 p-2 flex flex-col">
@@ -239,7 +248,7 @@ export default function Dashboard() {
         
         <DragOverlay>
           {draggingActiveId ? (
-            <div className="py-1 px-2 rounded border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105">
+            <div className="py-1 px-2 border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105 rounded-none">
               {actives.find(a => a.id === draggingActiveId.split('-')[0])?.name}
             </div>
           ) : null}
