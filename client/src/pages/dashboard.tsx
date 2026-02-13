@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2 } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -99,7 +99,6 @@ export default function Dashboard() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setDraggingId(active.id as string);
-    // Actives have IDs starting with 'a-' or suffix like '-1', PNMs start with 'p-'
     setDraggingType(active.id.toString().includes('p-') ? 'pnm' : 'active');
   };
 
@@ -110,7 +109,6 @@ export default function Dashboard() {
 
     if (!over) return;
 
-    // Handle Active dragging to PNM drop zone
     if (draggingType === 'active' && over.id.toString().startsWith('drop-')) {
       const activeId = active.id as string;
       const realActiveId = activeId.split('-')[0];
@@ -141,7 +139,6 @@ export default function Dashboard() {
       }));
     }
 
-    // Handle PNM reordering
     if (draggingType === 'pnm' && active.id !== over.id) {
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
@@ -170,6 +167,37 @@ export default function Dashboard() {
     }));
   };
 
+  const exportToCSV = () => {
+    const pnmRows = activeRound.pnms.map(pnm => {
+      const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
+      const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
+      return [pnm.name, pnm.idNumber, m1, m2];
+    });
+
+    const unusedActives = actives.filter(active => 
+      !usedActivesSlot1.has(active.id) && !usedActivesSlot2.has(active.id)
+    ).map(a => a.name);
+
+    const csvContent = [
+      ["--- MATCHUPS ---"],
+      ["PNM Name", "ID Number", "Match 1", "Match 2"],
+      ...pnmRows,
+      [""],
+      ["--- UNUSED ACTIVES ---"],
+      ...unusedActives.map(name => [name])
+    ].map(e => e.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${activeRound.name}_matches.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
 
   return (
@@ -190,6 +218,10 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-1.5">
+          <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-green-50 hover:bg-green-100 border-green-200 text-green-700" onClick={exportToCSV}>
+            <Download className="w-3 h-3 mr-1" /> Export CSV
+          </Button>
+
           <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><Users className="w-3 h-3 mr-1" /> Import Actives</Button></DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-none">
