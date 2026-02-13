@@ -171,7 +171,7 @@ export default function Dashboard() {
     const pnmRows = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
-      return [pnm.name, pnm.idNumber, m1, m2];
+      return [pnm.idNumber, pnm.name, m1, m2];
     });
 
     const unusedActives = actives.filter(active => 
@@ -180,7 +180,7 @@ export default function Dashboard() {
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["PNM Name", "ID Number", "Match 1", "Match 2"],
+      ["ID Number", "PNM Name", "Match 1", "Match 2"],
       ...pnmRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
