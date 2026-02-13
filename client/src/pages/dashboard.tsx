@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, GitMerge } from "lucide-react";
 
 interface RoundData {
   id: string;
@@ -66,7 +66,8 @@ export default function Dashboard() {
         id: `p-${Date.now()}-${index}`,
         name: parts[0] || `PNM ${activeRound.pnms.length + index + 1}`,
         idNumber: parts[1] || `ID-${Date.now()}-${index}`,
-        status: 'unmatched'
+        status: 'unmatched',
+        bumpPath: parts[2] || ""
       };
     });
     setRounds(prev => prev.map(r => r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r));
@@ -92,6 +93,16 @@ export default function Dashboard() {
       return {
         ...r,
         pnms: r.pnms.filter(p => p.id !== pnmId)
+      };
+    }));
+  };
+
+  const handleBumpPathChange = (pnmId: string, path: string) => {
+    setRounds(prev => prev.map(r => {
+      if (r.id !== activeRoundId) return r;
+      return {
+        ...r,
+        pnms: r.pnms.map(p => p.id === pnmId ? { ...p, bumpPath: path } : p)
       };
     }));
   };
@@ -171,7 +182,7 @@ export default function Dashboard() {
     const pnmRows = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
-      return [pnm.idNumber, pnm.name, m1, m2];
+      return [pnm.idNumber, pnm.name, m1, m2, pnm.bumpPath || ""];
     });
 
     const unusedActives = actives.filter(active => 
@@ -180,7 +191,7 @@ export default function Dashboard() {
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["ID Number", "PNM Name", "Match 1", "Match 2"],
+      ["ID Number", "PNM Name", "Match 1", "Match 2", "Bump Path"],
       ...pnmRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
@@ -234,8 +245,8 @@ export default function Dashboard() {
           <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><ClipboardPaste className="w-3 h-3 mr-1" /> Import PNMs</Button></DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-none">
-              <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
-              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
+              <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number, Bump Path (one per line)</DialogDescription></DialogHeader>
+              <Textarea placeholder="Jane Doe, 12345, Sarah J" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
               <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
             </DialogContent>
           </Dialog>
@@ -267,6 +278,7 @@ export default function Dashboard() {
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Path (Starter)</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -282,6 +294,7 @@ export default function Dashboard() {
                           actives={actives} 
                           onUnmatch={handleUnmatch} 
                           onDelete={handleDeletePnm} 
+                          onBumpPathChange={handleBumpPathChange}
                         />
                       ))}
                     </SortableContext>

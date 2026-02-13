@@ -5,6 +5,7 @@ export interface PNM {
   status: 'unmatched' | 'matched';
   matchedWith?: string; // activeId 1
   secondMatch?: string; // activeId 2
+  bumpPath?: string; // Who to start with for shifts
 }
 
 export interface Active {

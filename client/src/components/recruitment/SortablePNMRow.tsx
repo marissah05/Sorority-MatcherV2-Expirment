@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import PNMDropZone from "./PNMDropZone";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,9 +13,10 @@ interface SortablePNMRowProps {
   actives: Active[];
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
   onDelete: (pnmId: string) => void;
+  onBumpPathChange: (pnmId: string, path: string) => void;
 }
 
-export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete }: SortablePNMRowProps) {
+export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBumpPathChange }: SortablePNMRowProps) {
   const {
     attributes,
     listeners,
@@ -67,6 +69,14 @@ export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete }: So
           slot={2} 
           matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} 
           onUnmatch={onUnmatch} 
+        />
+      </TableCell>
+      <TableCell className="py-0.5">
+        <Input 
+          className="h-6 text-[11px] rounded-none bg-slate-50 border-slate-200 focus:bg-white"
+          placeholder="Path starter..."
+          value={pnm.bumpPath || ""}
+          onChange={(e) => onBumpPathChange(pnm.id, e.target.value)}
         />
       </TableCell>
       <TableCell className="py-0.5">
