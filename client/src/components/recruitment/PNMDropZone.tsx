@@ -19,7 +19,7 @@ export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch }:
     const isSlot1 = slot === 1;
     return (
       <div className={cn(
-        "flex items-center justify-between gap-1 px-2 py-0.5 rounded border text-[11px] font-medium min-w-[100px]",
+        "flex items-center justify-between gap-1 px-2 py-0.5 border text-[11px] font-medium min-w-[100px] rounded-none",
         isSlot1 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-purple-50 border-purple-200 text-purple-700"
       )}>
         <span className="truncate">{matchedActiveName}</span>
@@ -37,7 +37,7 @@ export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch }:
     <div 
       ref={setNodeRef}
       className={cn(
-        "h-6 border-2 border-dashed rounded flex items-center justify-center text-[10px] text-muted-foreground/50 italic px-2 transition-colors min-w-[100px]",
+        "h-6 border-2 border-dashed flex items-center justify-center text-[10px] text-muted-foreground/50 italic px-2 transition-colors min-w-[100px] rounded-none",
         isOver ? "bg-primary/5 border-primary text-primary" : "border-border/60 hover:border-border"
       )}
     >
