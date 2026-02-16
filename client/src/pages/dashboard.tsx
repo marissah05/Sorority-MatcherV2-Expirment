@@ -110,7 +110,16 @@ export default function Dashboard() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setDraggingId(active.id as string);
-    setDraggingType(active.id.toString().includes('p-') ? 'pnm' : 'active');
+    // Actives have IDs starting with 'a-' or suffix like '-1' or '-2', PNMs start with 'p-'
+    const idStr = active.id.toString();
+    if (idStr.startsWith('p-')) {
+      setDraggingType('pnm');
+    } else if (idStr.startsWith('a-') || idStr.includes('-1') || idStr.includes('-2')) {
+      setDraggingType('active');
+    } else {
+      // Fallback: if it doesn't match standard prefixes, assume it's an active if it doesn't have p-
+      setDraggingType('active');
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
