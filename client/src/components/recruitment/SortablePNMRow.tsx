@@ -5,6 +5,7 @@ import PNMDropZone from "./PNMDropZone";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,18 @@ export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBu
     transition,
   };
 
+  const filledCount = [pnm.matchedWith, pnm.secondMatch].filter(Boolean).length;
+  
+  const getStatusBadge = () => {
+    if (filledCount === 2) {
+      return <Badge className="bg-green-500 hover:bg-green-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold">Ready</Badge>;
+    }
+    if (filledCount === 1) {
+      return <Badge className="bg-amber-400 hover:bg-amber-500 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold text-nowrap">Missing 1</Badge>;
+    }
+    return <Badge className="bg-red-500 hover:bg-red-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold text-nowrap">Missing Both</Badge>;
+  };
+
   return (
     <TableRow 
       ref={setNodeRef} 
@@ -48,6 +61,9 @@ export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBu
         >
           <GripVertical className="h-3 w-3" />
         </div>
+      </TableCell>
+      <TableCell className="py-0.5">
+        {getStatusBadge()}
       </TableCell>
       <TableCell className="py-0.5">
         <div className="flex flex-col">

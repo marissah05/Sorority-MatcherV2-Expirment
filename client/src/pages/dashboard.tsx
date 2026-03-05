@@ -284,6 +284,7 @@ export default function Dashboard() {
                   <TableHeader className="bg-slate-50/50 sticky top-0 z-20">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-8"></TableHead>
+                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Status</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
