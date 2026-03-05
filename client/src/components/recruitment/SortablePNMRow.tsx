@@ -11,13 +11,14 @@ import { cn } from "@/lib/utils";
 
 interface SortablePNMRowProps {
   pnm: PNM;
+  pnms: PNM[]; // Added to check for duplicates across all PNMs
   actives: Active[];
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
   onDelete: (pnmId: string) => void;
   onBumpPathChange: (pnmId: string, path: string) => void;
 }
 
-export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBumpPathChange }: SortablePNMRowProps) {
+export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete, onBumpPathChange }: SortablePNMRowProps) {
   const {
     attributes,
     listeners,
@@ -77,6 +78,9 @@ export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBu
           slot={1} 
           matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name} 
           onUnmatch={onUnmatch} 
+          isDuplicate={!!pnm.matchedWith && pnms.some(otherPnm => 
+            otherPnm.id !== pnm.id && (otherPnm.matchedWith === pnm.matchedWith || otherPnm.secondMatch === pnm.matchedWith)
+          )}
         />
       </TableCell>
       <TableCell className="py-0.5">
@@ -85,6 +89,9 @@ export default function SortablePNMRow({ pnm, actives, onUnmatch, onDelete, onBu
           slot={2} 
           matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} 
           onUnmatch={onUnmatch} 
+          isDuplicate={!!pnm.secondMatch && pnms.some(otherPnm => 
+            otherPnm.id !== pnm.id && (otherPnm.matchedWith === pnm.secondMatch || otherPnm.secondMatch === pnm.secondMatch)
+          )}
         />
       </TableCell>
       <TableCell className="py-0.5">

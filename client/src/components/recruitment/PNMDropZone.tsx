@@ -7,9 +7,10 @@ interface PNMDropZoneProps {
   slot: 1 | 2;
   matchedActiveName?: string;
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
+  isDuplicate?: boolean;
 }
 
-export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch }: PNMDropZoneProps) {
+export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch, isDuplicate }: PNMDropZoneProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `drop-${pnm.id}-${slot}`,
     data: { pnm, slot },
@@ -20,7 +21,8 @@ export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch }:
     return (
       <div className={cn(
         "flex items-center justify-between gap-1 px-2 py-0.5 border text-[11px] font-medium min-w-[100px] rounded-none",
-        isSlot1 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-purple-50 border-purple-200 text-purple-700"
+        isSlot1 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-purple-50 border-purple-200 text-purple-700",
+        isDuplicate && "bg-red-50 border-red-500 text-red-700 animate-pulse"
       )}>
         <span className="truncate">{matchedActiveName}</span>
         <button 

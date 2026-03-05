@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, GitMerge } from "lucide-react";
+import { Toaster, toast } from "sonner";
 
 interface RoundData {
   id: string;
@@ -135,8 +136,18 @@ export default function Dashboard() {
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
       const slotKey = overData.slot === 1 ? 'matchedWith' : 'secondMatch';
       
-      const alreadyUsedInSlot = activeRound.pnms.some(p => p[slotKey] === realActiveId);
-      if (alreadyUsedInSlot) return;
+      // Check if this specific active is already assigned to ANY PNM in this round (in either slot)
+      const alreadyAssignedToAny = activeRound.pnms.some(p => 
+        p.matchedWith === realActiveId || p.secondMatch === realActiveId
+      );
+
+      if (alreadyAssignedToAny) {
+        toast.error("This active is already assigned in this round.", {
+          className: "rounded-none text-xs font-bold",
+          duration: 3000
+        });
+        return;
+      }
 
       const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
       if (!pnm) return;
@@ -187,7 +198,8 @@ export default function Dashboard() {
     }));
   };
 
-  const exportToCSV = () => {
+  const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
+
     const pnmRows = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
@@ -301,6 +313,7 @@ export default function Dashboard() {
                         <SortablePNMRow 
                           key={pnm.id} 
                           pnm={pnm} 
+                          pnms={activeRound.pnms}
                           actives={actives} 
                           onUnmatch={handleUnmatch} 
                           onDelete={handleDeletePnm} 
@@ -372,6 +385,7 @@ export default function Dashboard() {
           ) : null}
         </DragOverlay>
       </DndContext>
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
