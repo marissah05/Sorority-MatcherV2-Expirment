@@ -136,13 +136,11 @@ export default function Dashboard() {
       const overData = over.data.current as { pnm: PNM, slot: 1 | 2 };
       const slotKey = overData.slot === 1 ? 'matchedWith' : 'secondMatch';
       
-      // Check if this specific active is already assigned to ANY PNM in this round (in either slot)
-      const alreadyAssignedToAny = activeRound.pnms.some(p => 
-        p.matchedWith === realActiveId || p.secondMatch === realActiveId
-      );
+      // Check if this specific active is already used in THIS SLOT by another PNM
+      const alreadyUsedInSlot = activeRound.pnms.some(p => p[slotKey] === realActiveId);
 
-      if (alreadyAssignedToAny) {
-        toast.error("This active is already assigned in this round.", {
+      if (alreadyUsedInSlot) {
+        toast.error(`This active is already used as Bump ${overData.slot} in this round.`, {
           className: "rounded-none text-xs font-bold",
           duration: 3000
         });
@@ -152,6 +150,7 @@ export default function Dashboard() {
       const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
       if (!pnm) return;
       
+      // Prevent assigning the same active twice to the same PNM
       if (pnm.matchedWith === realActiveId || pnm.secondMatch === realActiveId) return;
 
       setRounds(prev => prev.map(r => {

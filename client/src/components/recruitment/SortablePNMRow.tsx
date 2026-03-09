@@ -79,7 +79,7 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
           matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name} 
           onUnmatch={onUnmatch} 
           isDuplicate={!!pnm.matchedWith && pnms.some(otherPnm => 
-            otherPnm.id !== pnm.id && (otherPnm.matchedWith === pnm.matchedWith || otherPnm.secondMatch === pnm.matchedWith)
+            otherPnm.id !== pnm.id && otherPnm.matchedWith === pnm.matchedWith
           )}
         />
       </TableCell>
@@ -90,7 +90,7 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
           matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name} 
           onUnmatch={onUnmatch} 
           isDuplicate={!!pnm.secondMatch && pnms.some(otherPnm => 
-            otherPnm.id !== pnm.id && (otherPnm.matchedWith === pnm.secondMatch || otherPnm.secondMatch === pnm.secondMatch)
+            otherPnm.id !== pnm.id && otherPnm.secondMatch === pnm.secondMatch
           )}
         />
       </TableCell>
