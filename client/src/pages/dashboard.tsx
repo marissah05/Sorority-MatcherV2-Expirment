@@ -198,8 +198,7 @@ export default function Dashboard() {
     }));
   };
 
-  const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
-
+  const exportToCSV = () => {
     const pnmRows = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
