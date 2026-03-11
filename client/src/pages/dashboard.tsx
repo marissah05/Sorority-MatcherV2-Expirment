@@ -64,7 +64,7 @@ export default function Dashboard() {
     const newPnms: PNM[] = lines.map((line, index) => {
       const parts = line.split(/[,\t]/).map(p => p.trim());
       return {
-        id: `p-${Date.now()}-${index}`,
+        id: `p_${Date.now()}_${index}`,
         name: parts[0] || `PNM ${activeRound.pnms.length + index + 1}`,
         idNumber: parts[1] || `ID-${Date.now()}-${index}`,
         status: 'unmatched',
@@ -80,7 +80,7 @@ export default function Dashboard() {
     if (!activePasteData.trim()) return;
     const lines = activePasteData.split('\n');
     const newActives: Active[] = lines.map((line, index) => ({
-      id: `a-${Date.now()}-${index}`,
+      id: `a_${Date.now()}_${index}`,
       name: line.trim()
     })).filter(a => a.name);
     setActives(prev => [...prev, ...newActives]);
@@ -111,14 +111,13 @@ export default function Dashboard() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     setDraggingId(active.id as string);
-    // Actives have IDs starting with 'a-' or suffix like '-1' or '-2', PNMs start with 'p-'
+    // Actives have IDs starting with 'a-', 'a_', or suffix like '-1' or '-2', PNMs start with 'p-' or 'p_'
     const idStr = active.id.toString();
-    if (idStr.startsWith('p-')) {
+    if (idStr.startsWith('p-') || idStr.startsWith('p_')) {
       setDraggingType('pnm');
-    } else if (idStr.startsWith('a-') || idStr.includes('-1') || idStr.includes('-2')) {
+    } else if (idStr.startsWith('a-') || idStr.startsWith('a_') || idStr.includes('-1') || idStr.includes('-2')) {
       setDraggingType('active');
     } else {
-      // Fallback: if it doesn't match standard prefixes, assume it's an active if it doesn't have p-
       setDraggingType('active');
     }
   };
