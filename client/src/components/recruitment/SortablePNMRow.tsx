@@ -15,10 +15,9 @@ interface SortablePNMRowProps {
   actives: Active[];
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
   onDelete: (pnmId: string) => void;
-  onBumpPathChange: (pnmId: string, path: string) => void;
 }
 
-export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete, onBumpPathChange }: SortablePNMRowProps) {
+export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete }: SortablePNMRowProps) {
   const {
     attributes,
     listeners,
@@ -92,14 +91,6 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
           isDuplicate={!!pnm.secondMatch && pnms.some(otherPnm => 
             otherPnm.id !== pnm.id && otherPnm.secondMatch === pnm.secondMatch
           )}
-        />
-      </TableCell>
-      <TableCell className="py-0.5">
-        <Input 
-          className="h-6 text-[11px] rounded-none bg-slate-50 border-slate-200 focus:bg-white"
-          placeholder="Path starter..."
-          value={pnm.bumpPath || ""}
-          onChange={(e) => onBumpPathChange(pnm.id, e.target.value)}
         />
       </TableCell>
       <TableCell className="py-0.5">

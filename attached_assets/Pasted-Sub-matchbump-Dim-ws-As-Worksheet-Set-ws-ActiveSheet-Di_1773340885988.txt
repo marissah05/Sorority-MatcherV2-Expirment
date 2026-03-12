@@ -1,0 +1,84 @@
+Sub matchbump()
+
+
+
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+    
+    If lastRow < 2 Then
+        MsgBox "No data found in Column C.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Clear previous output (Column F onward)
+    ws.Range("F2:Z1000").ClearContents
+    
+    Dim dictForward As Object
+    Dim dictReverse As Object
+    Set dictForward = CreateObject("Scripting.Dictionary")
+    Set dictReverse = CreateObject("Scripting.Dictionary")
+    
+    Dim i As Long
+    Dim active1 As String
+    Dim active2 As String
+    
+    ' Build dictionaries
+    For i = 2 To lastRow
+        active1 = Trim(ws.Cells(i, "C").Value)
+        active2 = Trim(ws.Cells(i, "D").Value)
+        
+        If active1 <> "" And active2 <> "" Then
+            dictForward(active1) = active2
+            dictReverse(active2) = active1
+        End If
+    Next i
+    
+    Dim outputRow As Long
+    outputRow = 2
+    
+    Dim starter As Variant
+    Dim currentName As String
+    Dim nextName As String
+    Dim stepCol As Long
+    Dim safetyCounter As Long
+    
+    ' Find chain starters (in C but NOT in D)
+    For Each starter In dictForward.Keys
+        
+        If Not dictReverse.exists(starter) Then
+            
+            currentName = starter
+            stepCol = 6 ' Column F
+            safetyCounter = 0
+            
+            Do While dictForward.exists(currentName)
+                
+                nextName = dictForward(currentName)
+                
+                ws.Cells(outputRow, stepCol).Value = currentName & " ? " & nextName
+                
+                currentName = nextName
+                stepCol = stepCol + 1
+                safetyCounter = safetyCounter + 1
+                
+                ' Safety stop to prevent infinite loops
+                If safetyCounter > 100 Then
+                    MsgBox "Possible loop detected. Stopping chain generation.", vbCritical
+                    Exit Sub
+                End If
+                
+            Loop
+            
+            outputRow = outputRow + 1
+            
+        End If
+        
+    Next starter
+    
+    MsgBox "Bump chains generated successfully!", vbInformation
+
+End Sub
+

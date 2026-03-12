@@ -67,8 +67,7 @@ export default function Dashboard() {
         id: `p_${Date.now()}_${index}`,
         name: parts[0] || `PNM ${activeRound.pnms.length + index + 1}`,
         idNumber: parts[1] || `ID-${Date.now()}-${index}`,
-        status: 'unmatched',
-        bumpPath: parts[2] || ""
+        status: 'unmatched'
       };
     });
     setRounds(prev => prev.map(r => r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r));
@@ -94,16 +93,6 @@ export default function Dashboard() {
       return {
         ...r,
         pnms: r.pnms.filter(p => p.id !== pnmId)
-      };
-    }));
-  };
-
-  const handleBumpPathChange = (pnmId: string, path: string) => {
-    setRounds(prev => prev.map(r => {
-      if (r.id !== activeRoundId) return r;
-      return {
-        ...r,
-        pnms: r.pnms.map(p => p.id === pnmId ? { ...p, bumpPath: path } : p)
       };
     }));
   };
@@ -196,10 +185,47 @@ export default function Dashboard() {
   };
 
   const exportToCSV = () => {
-    const pnmRows = activeRound.pnms.map(pnm => {
+    const pnmRows: string[][] = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
-      return [pnm.idNumber, pnm.name, m1, m2, pnm.bumpPath || ""];
+      return [pnm.idNumber, pnm.name, m1, m2];
+    });
+
+    const dictForward = new Map<string, string>();
+    const dictReverse = new Map<string, string>();
+    
+    activeRound.pnms.forEach(pnm => {
+      const m1Name = actives.find(a => a.id === pnm.matchedWith)?.name;
+      const m2Name = actives.find(a => a.id === pnm.secondMatch)?.name;
+      if (m1Name && m2Name && m1Name !== "Unmatched" && m2Name !== "Unmatched") {
+        dictForward.set(m1Name, m2Name);
+        dictReverse.set(m2Name, m1Name);
+      }
+    });
+
+    const chains: string[][] = [];
+    for (const starter of dictForward.keys()) {
+      if (!dictReverse.has(starter)) {
+        const currentChain: string[] = [];
+        let currentName = starter;
+        let safetyCounter = 0;
+        
+        while (dictForward.has(currentName) && safetyCounter <= 100) {
+          const nextName = dictForward.get(currentName)!;
+          currentChain.push(`${currentName} -> ${nextName}`);
+          currentName = nextName;
+          safetyCounter++;
+        }
+        chains.push(currentChain);
+      }
+    }
+
+    chains.forEach((chain, i) => {
+      if (i < pnmRows.length) {
+        pnmRows[i].push("", ...chain);
+      } else {
+        pnmRows.push(["", "", "", "", "", ...chain]);
+      }
     });
 
     const unusedActives = actives.filter(active => 
@@ -208,7 +234,7 @@ export default function Dashboard() {
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["ID Number", "PNM Name", "Match 1", "Match 2", "Bump Path"],
+      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Bump Chains..."],
       ...pnmRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
@@ -262,8 +288,8 @@ export default function Dashboard() {
           <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><ClipboardPaste className="w-3 h-3 mr-1" /> Import PNMs</Button></DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-none">
-              <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number, Bump Path (one per line)</DialogDescription></DialogHeader>
-              <Textarea placeholder="Jane Doe, 12345, Sarah J" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
+              <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
+              <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
               <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
             </DialogContent>
           </Dialog>
@@ -296,7 +322,6 @@ export default function Dashboard() {
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Path (Starter)</TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -313,7 +338,6 @@ export default function Dashboard() {
                           actives={actives} 
                           onUnmatch={handleUnmatch} 
                           onDelete={handleDeletePnm} 
-                          onBumpPathChange={handleBumpPathChange}
                         />
                       ))}
                     </SortableContext>
