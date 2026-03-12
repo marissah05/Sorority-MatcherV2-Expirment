@@ -185,10 +185,17 @@ export default function Dashboard() {
   };
 
   const exportToCSV = () => {
+    const escapeCSV = (str: string) => {
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const pnmRows: string[][] = activeRound.pnms.map(pnm => {
       const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
       const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
-      return [pnm.idNumber, pnm.name, m1, m2];
+      return [escapeCSV(pnm.idNumber), escapeCSV(pnm.name), escapeCSV(m1), escapeCSV(m2)];
     });
 
     const dictForward = new Map<string, string>();
@@ -203,39 +210,65 @@ export default function Dashboard() {
       }
     });
 
-    const chains: string[][] = [];
+    const chains: string[] = [];
+    const visited = new Set<string>();
+
     for (const starter of dictForward.keys()) {
       if (!dictReverse.has(starter)) {
-        const currentChain: string[] = [];
+        let currentChain = starter;
         let currentName = starter;
         let safetyCounter = 0;
         
         while (dictForward.has(currentName) && safetyCounter <= 100) {
+          visited.add(currentName);
           const nextName = dictForward.get(currentName)!;
-          currentChain.push(`${currentName} -> ${nextName}`);
+          currentChain += ` -> ${nextName}`;
           currentName = nextName;
           safetyCounter++;
+        }
+        visited.add(currentName);
+        chains.push(currentChain);
+      }
+    }
+
+    // Now look for loops/cycles that have no "start"
+    for (const starter of dictForward.keys()) {
+      if (!visited.has(starter)) {
+        let currentChain = starter;
+        let currentName = starter;
+        let safetyCounter = 0;
+        
+        while (dictForward.has(currentName) && !visited.has(dictForward.get(currentName)!) && safetyCounter <= 100) {
+          visited.add(currentName);
+          const nextName = dictForward.get(currentName)!;
+          currentChain += ` -> ${nextName}`;
+          currentName = nextName;
+          safetyCounter++;
+        }
+        visited.add(currentName);
+        if (dictForward.has(currentName)) {
+           currentChain += ` -> ${dictForward.get(currentName)!}`;
         }
         chains.push(currentChain);
       }
     }
 
-    chains.forEach((chain, i) => {
-      if (i < pnmRows.length) {
-        pnmRows[i].push("", ...chain);
-      } else {
-        pnmRows.push(["", "", "", "", "", ...chain]);
-      }
-    });
+    const finalRows: string[][] = [];
+    const maxRows = Math.max(pnmRows.length, chains.length);
+    for (let i = 0; i < maxRows; i++) {
+      const row = pnmRows[i] || ["", "", "", ""];
+      const chainStr = chains[i] ? escapeCSV(chains[i]) : "";
+      finalRows.push([...row, "", chainStr]);
+    }
 
     const unusedActives = actives.filter(active => 
       !usedActivesSlot1.has(active.id) && !usedActivesSlot2.has(active.id)
-    ).map(a => a.name);
+    ).map(a => escapeCSV(a.name));
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Bump Chains..."],
-      ...pnmRows,
+      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Bump Chains"],
+      ...finalRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
       ...unusedActives.map(name => [name])
