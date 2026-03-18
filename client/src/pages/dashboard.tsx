@@ -31,6 +31,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, Lock, Unlock } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 interface RoundData {
   id: string;
@@ -103,14 +104,11 @@ export default function Dashboard() {
     }));
   };
 
-  const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      complete: (results) => {
-        // Find the index of the "--- MATCHUPS ---" section
-        const data = results.data as string[][];
+    const parseData = (data: string[][]) => {
         let matchupsStartIndex = -1;
         let matchupsEndIndex = data.length;
 
@@ -125,7 +123,7 @@ export default function Dashboard() {
         }
 
         if (matchupsStartIndex === -1) {
-          toast.error("Invalid CSV format. Could not find '--- MATCHUPS ---' section.", {
+          toast.error("Invalid format. Could not find '--- MATCHUPS ---' section.", {
             className: "rounded-none text-xs font-bold"
           });
           return;
@@ -142,10 +140,10 @@ export default function Dashboard() {
           if (!row || row.length < 4) continue;
           if (!row[0] && !row[1]) continue; // Skip empty rows
 
-          const idNumber = row[0];
-          const name = row[1];
-          const m1Name = row[2];
-          const m2Name = row[3];
+          const idNumber = String(row[0]);
+          const name = String(row[1]);
+          const m1Name = String(row[2]);
+          const m2Name = String(row[3]);
 
           let m1Id = undefined;
           let m2Id = undefined;
@@ -194,8 +192,6 @@ export default function Dashboard() {
         setRounds(prev => prev.map(r => {
           if (r.id !== activeRoundId) return r;
           
-          // Merge existing PNMs that weren't in the CSV (optional, currently we just replace/update what's in CSV)
-          // To keep it simple, we replace the round's PNMs with the imported ones, but append any existing ones not in CSV
           const csvPnmIds = new Set(newPnms.map(p => p.idNumber));
           const keptPnms = r.pnms.filter(p => !csvPnmIds.has(p.idNumber));
 
@@ -205,7 +201,7 @@ export default function Dashboard() {
           };
         }));
 
-        toast.success("CSV Imported Successfully", {
+        toast.success("Imported Successfully", {
           className: "rounded-none text-xs font-bold bg-green-50 text-green-700 border-green-200"
         });
         
@@ -213,13 +209,53 @@ export default function Dashboard() {
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-      },
-      error: (error) => {
-        toast.error(`Error parsing CSV: ${error.message}`, {
+    };
+
+    if (file.name.endsWith('.csv')) {
+      Papa.parse(file, {
+        complete: (results) => {
+          parseData(results.data as string[][]);
+        },
+        error: (error) => {
+          toast.error(`Error parsing CSV: ${error.message}`, {
+            className: "rounded-none text-xs font-bold"
+          });
+        }
+      });
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
+          
+          // Convert array of objects back to array of arrays to match our parser logic
+          // XLSX header: 1 means we get an array of arrays
+          const arrayData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+          
+          // Pad rows to ensure they have enough columns if some are missing
+          const paddedData = arrayData.map(row => {
+             const newRow = [...row];
+             while(newRow.length < 4) newRow.push("");
+             return newRow;
+          });
+          
+          parseData(paddedData);
+        } catch (error) {
+          toast.error(`Error parsing Excel file.`, {
+            className: "rounded-none text-xs font-bold"
+          });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+        toast.error(`Unsupported file type. Please upload a CSV or Excel file.`, {
           className: "rounded-none text-xs font-bold"
         });
-      }
-    });
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -439,7 +475,7 @@ export default function Dashboard() {
           </Button>
           <input 
             type="file" 
-            accept=".csv" 
+            accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" 
             className="hidden" 
             ref={fileInputRef} 
             onChange={handleCSVImport} 
