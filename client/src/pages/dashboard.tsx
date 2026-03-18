@@ -67,16 +67,44 @@ export default function Dashboard() {
 
   const handlePnmImport = () => {
     if (!pnmPasteData.trim()) return;
-    const lines = pnmPasteData.split('\n');
+    const lines = pnmPasteData.split('\n').filter(line => line.trim());
     const newPnms: PNM[] = lines.map((line, index) => {
-      const parts = line.split(/[,\t]/).map(p => p.trim());
+      let name = "";
+      let idNumber = "000";
+      
+      const parts = line.split(/[,\t]/).map(p => p.trim()).filter(Boolean);
+      
+      if (parts.length >= 2) {
+        if (/^\d+$/.test(parts[0])) {
+          idNumber = parts[0];
+          name = parts[1];
+        } else if (/^\d+$/.test(parts[1])) {
+          name = parts[0];
+          idNumber = parts[1];
+        } else {
+          name = parts[0];
+          idNumber = parts[1] || "000";
+        }
+      } else {
+        const text = parts[0] || "";
+        const match = text.match(/^(\d+)\s+(.+)$/);
+        if (match) {
+          idNumber = match[1];
+          name = match[2];
+        } else {
+          name = text;
+          idNumber = "000";
+        }
+      }
+      
       return {
-        id: `p_${Date.now()}_${index}`,
-        name: parts[0] || `PNM ${activeRound.pnms.length + index + 1}`,
-        idNumber: parts[1] || `ID-${Date.now()}-${index}`,
+        id: `p_${Date.now()}_${index}_${Math.random().toString(36).substring(7)}`,
+        name: name || `PNM ${activeRound.pnms.length + index + 1}`,
+        idNumber,
         status: 'unmatched'
       };
     });
+    
     setRounds(prev => prev.map(r => r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r));
     setPnmPasteData("");
     setIsPnmImportOpen(false);
