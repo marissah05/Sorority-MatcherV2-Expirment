@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { 
   DndContext, 
   DragOverlay, 
@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, GitMerge } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, GitMerge, Lock, Unlock } from "lucide-react";
 import { Toaster, toast } from "sonner";
 
 interface RoundData {
@@ -51,6 +51,10 @@ export default function Dashboard() {
   const [activePasteData, setActivePasteData] = useState("");
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
+  const [isPoolLocked, setIsPoolLocked] = useState(true);
+
+  const pool1Ref = useRef<HTMLDivElement>(null);
+  const pool2Ref = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
@@ -383,28 +387,53 @@ export default function Dashboard() {
           <ResizableHandle withHandle className="bg-slate-200" />
 
           <ResizablePanel defaultSize={25} minSize={15}>
-            <div className="h-full bg-slate-100/50 p-2 flex flex-col">
-              <div className="flex items-center justify-between mb-2 px-1">
+            <div className="h-full bg-slate-100/50 p-2 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-2 px-1 shrink-0">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active Pool</h3>
-                <UserCheck className="h-3 w-3 text-slate-400" />
+                <div className="flex gap-2">
+                   <button 
+                     onClick={() => setIsPoolLocked(!isPoolLocked)} 
+                     className="text-slate-400 hover:text-slate-600 transition-colors"
+                     title={isPoolLocked ? "Unlock Scroll" : "Lock Scroll"}
+                   >
+                     {isPoolLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                   </button>
+                   <UserCheck className="h-3 w-3 text-slate-400" />
+                </div>
               </div>
               
               <div className="flex-1 flex gap-1.5 overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1">M1 Pool</div>
-                  <ScrollArea className="flex-1">
-                    <div className="space-y-1 pr-1">
+                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1 shrink-0">M1 Pool</div>
+                  <ScrollArea 
+                    className="flex-1"
+                    viewportRef={pool1Ref}
+                    onScrollCapture={(e) => {
+                      if (isPoolLocked && pool2Ref.current) {
+                        pool2Ref.current.scrollTop = e.currentTarget.scrollTop;
+                      }
+                    }}
+                  >
+                    <div className="space-y-1 pr-1 pb-4">
                       {actives.map(active => (
                         <ActiveDraggable key={`${active.id}-1`} active={{ ...active, id: `${active.id}-1` }} isMatched={usedActivesSlot1.has(active.id)} />
                       ))}
                     </div>
                   </ScrollArea>
                 </div>
-                <div className="w-[1px] bg-slate-200" />
+                <div className="w-[1px] bg-slate-200 shrink-0" />
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1">M2 Pool</div>
-                  <ScrollArea className="flex-1">
-                    <div className="space-y-1 pr-1">
+                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1 shrink-0">M2 Pool</div>
+                  <ScrollArea 
+                    className="flex-1"
+                    viewportRef={pool2Ref}
+                    onScrollCapture={(e) => {
+                      if (isPoolLocked && pool1Ref.current) {
+                        pool1Ref.current.scrollTop = e.currentTarget.scrollTop;
+                      }
+                    }}
+                  >
+                    <div className="space-y-1 pr-1 pb-4">
                       {actives.map(active => (
                         <ActiveDraggable key={`${active.id}-2`} active={{ ...active, id: `${active.id}-2` }} isMatched={usedActivesSlot2.has(active.id)} />
                       ))}
