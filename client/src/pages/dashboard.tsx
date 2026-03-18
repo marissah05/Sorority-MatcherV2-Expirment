@@ -28,8 +28,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, GitMerge, Lock, Unlock } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, Lock, Unlock } from "lucide-react";
 import { Toaster, toast } from "sonner";
+import Papa from "papaparse";
 
 interface RoundData {
   id: string;
@@ -55,6 +56,7 @@ export default function Dashboard() {
 
   const pool1Ref = useRef<HTMLDivElement>(null);
   const pool2Ref = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
@@ -99,6 +101,125 @@ export default function Dashboard() {
         pnms: r.pnms.filter(p => p.id !== pnmId)
       };
     }));
+  };
+
+  const handleCSVImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      complete: (results) => {
+        // Find the index of the "--- MATCHUPS ---" section
+        const data = results.data as string[][];
+        let matchupsStartIndex = -1;
+        let matchupsEndIndex = data.length;
+
+        for (let i = 0; i < data.length; i++) {
+          if (data[i][0] === "--- MATCHUPS ---") {
+            matchupsStartIndex = i + 2; // Skip the title and the header row
+          } else if (data[i][0] === "--- UNUSED ACTIVES ---" || (matchupsStartIndex !== -1 && data[i][0] === "")) {
+             if(matchupsEndIndex === data.length) {
+               matchupsEndIndex = i;
+             }
+          }
+        }
+
+        if (matchupsStartIndex === -1) {
+          toast.error("Invalid CSV format. Could not find '--- MATCHUPS ---' section.", {
+            className: "rounded-none text-xs font-bold"
+          });
+          return;
+        }
+
+        const newPnms: PNM[] = [];
+        const extractedActives = new Map<string, Active>();
+
+        // Ensure current actives are in the map
+        actives.forEach(a => extractedActives.set(a.name, a));
+
+        for (let i = matchupsStartIndex; i < matchupsEndIndex; i++) {
+          const row = data[i];
+          if (!row || row.length < 4) continue;
+          if (!row[0] && !row[1]) continue; // Skip empty rows
+
+          const idNumber = row[0];
+          const name = row[1];
+          const m1Name = row[2];
+          const m2Name = row[3];
+
+          let m1Id = undefined;
+          let m2Id = undefined;
+
+          // Helper to get or create active
+          const getOrCreateActive = (activeName: string) => {
+            if (!activeName || activeName === "Unmatched" || activeName === "") return undefined;
+            if (extractedActives.has(activeName)) {
+              return extractedActives.get(activeName)!.id;
+            }
+            const newId = `a_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            const newActive = { id: newId, name: activeName };
+            extractedActives.set(activeName, newActive);
+            return newId;
+          };
+
+          m1Id = getOrCreateActive(m1Name);
+          m2Id = getOrCreateActive(m2Name);
+
+          // Find existing PNM or create new
+          const existingPnm = activeRound.pnms.find(p => p.idNumber === idNumber);
+          
+          if (existingPnm) {
+            newPnms.push({
+              ...existingPnm,
+              matchedWith: m1Id,
+              secondMatch: m2Id,
+              status: (m1Id || m2Id) ? 'matched' : 'unmatched'
+            });
+          } else {
+             newPnms.push({
+              id: `p_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              name: name || `PNM ${newPnms.length + 1}`,
+              idNumber: idNumber || `ID-${Date.now()}-${newPnms.length}`,
+              matchedWith: m1Id,
+              secondMatch: m2Id,
+              status: (m1Id || m2Id) ? 'matched' : 'unmatched'
+            });
+          }
+        }
+        
+        // Update Actives
+        setActives(Array.from(extractedActives.values()));
+
+        // Update Round PNMs
+        setRounds(prev => prev.map(r => {
+          if (r.id !== activeRoundId) return r;
+          
+          // Merge existing PNMs that weren't in the CSV (optional, currently we just replace/update what's in CSV)
+          // To keep it simple, we replace the round's PNMs with the imported ones, but append any existing ones not in CSV
+          const csvPnmIds = new Set(newPnms.map(p => p.idNumber));
+          const keptPnms = r.pnms.filter(p => !csvPnmIds.has(p.idNumber));
+
+          return {
+            ...r,
+            pnms: [...keptPnms, ...newPnms]
+          };
+        }));
+
+        toast.success("CSV Imported Successfully", {
+          className: "rounded-none text-xs font-bold bg-green-50 text-green-700 border-green-200"
+        });
+        
+        // reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      },
+      error: (error) => {
+        toast.error(`Error parsing CSV: ${error.message}`, {
+          className: "rounded-none text-xs font-bold"
+        });
+      }
+    });
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -312,6 +433,17 @@ export default function Dashboard() {
           <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-green-50 hover:bg-green-100 border-green-200 text-green-700" onClick={exportToCSV}>
             <Download className="w-3 h-3 mr-1" /> Export CSV
           </Button>
+
+          <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="w-3 h-3 mr-1" /> Import CSV
+          </Button>
+          <input 
+            type="file" 
+            accept=".csv" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleCSVImport} 
+          />
 
           <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none"><Users className="w-3 h-3 mr-1" /> Import Actives</Button></DialogTrigger>
