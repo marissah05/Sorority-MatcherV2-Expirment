@@ -68,34 +68,32 @@ export default function Dashboard() {
   const handlePnmImport = () => {
     if (!pnmPasteData.trim()) return;
     const lines = pnmPasteData.split('\n').filter(line => line.trim());
+    
     const newPnms: PNM[] = lines.map((line, index) => {
       let name = "";
       let idNumber = "000";
       
-      const parts = line.split(/[,\t]/).map(p => p.trim()).filter(Boolean);
+      const cleanLine = line.trim();
       
-      if (parts.length >= 2) {
-        if (/^\d+$/.test(parts[0])) {
-          idNumber = parts[0];
-          name = parts[1];
-        } else if (/^\d+$/.test(parts[1])) {
-          name = parts[0];
-          idNumber = parts[1];
-        } else {
-          name = parts[0];
-          idNumber = parts[1] || "000";
-        }
+      // Look for a number at the start: e.g. "123 Jane Doe" or "123, Doe, Jane"
+      const startMatch = cleanLine.match(/^(\d+)[\s,]+(.+)$/);
+      // Look for a number at the end: e.g. "Jane Doe 123" or "Doe, Jane, 123"
+      const endMatch = cleanLine.match(/^(.+?)[\s,]+(\d+)$/);
+      
+      if (startMatch) {
+        idNumber = startMatch[1];
+        name = startMatch[2];
+      } else if (endMatch) {
+        name = endMatch[1];
+        idNumber = endMatch[2];
       } else {
-        const text = parts[0] || "";
-        const match = text.match(/^(\d+)\s+(.+)$/);
-        if (match) {
-          idNumber = match[1];
-          name = match[2];
-        } else {
-          name = text;
-          idNumber = "000";
-        }
+        // No number found at start or end, the entire line is the name
+        name = cleanLine;
+        idNumber = "000";
       }
+
+      // Remove any stray commas or spaces at the start/end of the name
+      name = name.replace(/^[\s,]+|[\s,]+$/g, '').trim();
       
       return {
         id: `p_${Date.now()}_${index}_${Math.random().toString(36).substring(7)}`,
