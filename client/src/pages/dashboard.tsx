@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, Lock, Unlock } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -53,7 +53,6 @@ export default function Dashboard() {
   const [activePasteData, setActivePasteData] = useState("");
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
-  const [isPoolLocked, setIsPoolLocked] = useState(true);
 
   const pool1Ref = useRef<HTMLDivElement>(null);
   const pool2Ref = useRef<HTMLDivElement>(null);
@@ -585,13 +584,6 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-2 px-1 shrink-0">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active Pool</h3>
                 <div className="flex gap-2">
-                   <button 
-                     onClick={() => setIsPoolLocked(!isPoolLocked)} 
-                     className="text-slate-400 hover:text-slate-600 transition-colors"
-                     title={isPoolLocked ? "Scrolls M1 and M2 pools together. Click to unlock." : "Pools scroll independently. Click to lock together."}
-                   >
-                     {isPoolLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                   </button>
                    <UserCheck className="h-3 w-3 text-slate-400" />
                 </div>
               </div>
@@ -602,11 +594,6 @@ export default function Dashboard() {
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool1Ref}
-                    onScrollCapture={(e) => {
-                      if (isPoolLocked && pool2Ref.current) {
-                        pool2Ref.current.scrollTop = e.currentTarget.scrollTop;
-                      }
-                    }}
                   >
                     <div className="space-y-1 pr-1 pb-4">
                       {actives.map(active => (
@@ -621,11 +608,6 @@ export default function Dashboard() {
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool2Ref}
-                    onScrollCapture={(e) => {
-                      if (isPoolLocked && pool1Ref.current) {
-                        pool1Ref.current.scrollTop = e.currentTarget.scrollTop;
-                      }
-                    }}
                   >
                     <div className="space-y-1 pr-1 pb-4">
                       {actives.map(active => (
