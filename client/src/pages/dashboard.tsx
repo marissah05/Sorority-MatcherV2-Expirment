@@ -588,7 +588,7 @@ export default function Dashboard() {
                    <button 
                      onClick={() => setIsPoolLocked(!isPoolLocked)} 
                      className="text-slate-400 hover:text-slate-600 transition-colors"
-                     title={isPoolLocked ? "Unlock Scroll" : "Lock Scroll"}
+                     title={isPoolLocked ? "Scrolls M1 and M2 pools together. Click to unlock." : "Pools scroll independently. Click to lock together."}
                    >
                      {isPoolLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                    </button>
