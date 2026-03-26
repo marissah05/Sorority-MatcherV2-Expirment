@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -53,6 +53,7 @@ export default function Dashboard() {
   const [activePasteData, setActivePasteData] = useState("");
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
+  const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
 
   const pool1Ref = useRef<HTMLDivElement>(null);
   const pool2Ref = useRef<HTMLDivElement>(null);
@@ -370,20 +371,7 @@ export default function Dashboard() {
     }));
   };
 
-  const exportToCSV = () => {
-    const escapeCSV = (str: string) => {
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const pnmRows: string[][] = activeRound.pnms.map(pnm => {
-      const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
-      const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
-      return [escapeCSV(pnm.idNumber), escapeCSV(pnm.name), escapeCSV(m1), escapeCSV(m2)];
-    });
-
+  const generateChains = () => {
     const dictForward = new Map<string, string>();
     const dictReverse = new Map<string, string>();
     
@@ -438,6 +426,25 @@ export default function Dashboard() {
         chains.push(currentChain);
       }
     }
+    
+    return chains;
+  };
+
+  const exportToCSV = () => {
+    const escapeCSV = (str: string) => {
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const pnmRows: string[][] = activeRound.pnms.map(pnm => {
+      const m1 = actives.find(a => a.id === pnm.matchedWith)?.name || "Unmatched";
+      const m2 = actives.find(a => a.id === pnm.secondMatch)?.name || "Unmatched";
+      return [escapeCSV(pnm.idNumber), escapeCSV(pnm.name), escapeCSV(m1), escapeCSV(m2)];
+    });
+
+    const chains = generateChains();
 
     const finalRows: string[][] = [];
     const maxRows = Math.max(pnmRows.length, chains.length);
@@ -494,6 +501,39 @@ export default function Dashboard() {
           <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-green-50 hover:bg-green-100 border-green-200 text-green-700" onClick={exportToCSV}>
             <Download className="w-3 h-3 mr-1" /> Export CSV
           </Button>
+
+          <Dialog open={isBumpChainsOpen} onOpenChange={setIsBumpChainsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700">
+                <ListOrdered className="w-3 h-3 mr-1" /> View Chains
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col rounded-none">
+              <DialogHeader>
+                <DialogTitle>Current Bump Chains</DialogTitle>
+                <DialogDescription>
+                  Live preview of bump groups based on current matches.
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 -mx-4 px-4 py-2">
+                {generateChains().length > 0 ? (
+                  <div className="space-y-2">
+                    {generateChains().map((chain, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700 shadow-sm">
+                        {chain}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                    <ListOrdered className="w-8 h-8 mb-2 opacity-50" />
+                    <p className="text-sm">No complete bump chains found yet.</p>
+                    <p className="text-xs">Match more PNMs to generate chains.</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
 
           <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" onClick={() => fileInputRef.current?.click()}>
             <Upload className="w-3 h-3 mr-1" /> Import CSV
