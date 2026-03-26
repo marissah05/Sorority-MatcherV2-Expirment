@@ -28,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
   const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
+  const [chainLengthLimit, setChainLengthLimit] = useState(5);
 
   const pool1Ref = useRef<HTMLDivElement>(null);
   const pool2Ref = useRef<HTMLDivElement>(null);
@@ -515,14 +516,37 @@ export default function Dashboard() {
                   Live preview of bump groups based on current matches.
                 </DialogDescription>
               </DialogHeader>
+              <div className="flex items-center gap-2 px-0 py-2 border-b">
+                <span className="text-xs font-semibold text-slate-600">Chain Limit Alert:</span>
+                <input 
+                  type="number" 
+                  min="2" 
+                  max="20" 
+                  value={chainLengthLimit} 
+                  onChange={(e) => setChainLengthLimit(Number(e.target.value))}
+                  className="w-16 h-7 border px-2 text-xs"
+                />
+                <span className="text-[10px] text-slate-500">actives per chain</span>
+              </div>
               <ScrollArea className="flex-1 -mx-4 px-4 py-2">
                 {generateChains().length > 0 ? (
                   <div className="space-y-2">
-                    {generateChains().map((chain, idx) => (
-                      <div key={idx} className="p-3 bg-slate-50 border border-slate-100 text-sm font-medium text-slate-700 shadow-sm">
-                        {chain}
-                      </div>
-                    ))}
+                    {generateChains().map((chain, idx) => {
+                      const count = chain.split('->').length;
+                      const isOverLimit = count > chainLengthLimit;
+                      
+                      return (
+                        <div key={idx} className={`p-3 bg-slate-50 border text-sm font-medium shadow-sm flex items-start justify-between gap-4 ${isOverLimit ? 'border-red-300 bg-red-50' : 'border-slate-100 text-slate-700'}`}>
+                          <div className={isOverLimit ? 'text-red-800' : ''}>{chain}</div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isOverLimit && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                            <Badge variant="outline" className={`text-[10px] rounded-none ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : ''}`}>
+                              {count}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-slate-400">
