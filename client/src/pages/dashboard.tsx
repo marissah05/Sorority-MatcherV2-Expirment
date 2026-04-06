@@ -28,7 +28,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -107,6 +108,80 @@ export default function Dashboard() {
     setRounds(prev => prev.map(r => r.id === activeRoundId ? { ...r, pnms: [...r.pnms, ...newPnms] } : r));
     setPnmPasteData("");
     setIsPnmImportOpen(false);
+  };
+
+  const handleAutoMatch = () => {
+    if (actives.length === 0 || activeRound.pnms.length === 0) {
+      toast.error("Need both PNMs and Actives to auto-match", { className: "rounded-none text-xs font-bold" });
+      return;
+    }
+
+    // Create a pool of available slots (2 for each active)
+    let availableM1Slots = [...actives];
+    let availableM2Slots = [...actives];
+
+    // Shuffle the slots to make it random
+    const shuffleArray = <T,>(array: T[]) => {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    };
+
+    availableM1Slots = shuffleArray(availableM1Slots);
+    availableM2Slots = shuffleArray(availableM2Slots);
+
+    setRounds(prev => prev.map(r => {
+      if (r.id !== activeRoundId) return r;
+      
+      const newPnms = r.pnms.map((pnm, index) => {
+        let m1Id: string | undefined = undefined;
+        let m2Id: string | undefined = undefined;
+
+        // Try to assign M1
+        if (availableM1Slots.length > 0) {
+          m1Id = availableM1Slots.pop()?.id;
+        }
+
+        // Try to assign M2, ensuring it's not the same active as M1
+        if (availableM2Slots.length > 0) {
+          // Find an active in M2 slots that isn't the M1 we just assigned
+          const validM2Index = availableM2Slots.findIndex(a => a.id !== m1Id);
+          if (validM2Index !== -1) {
+            m2Id = availableM2Slots[validM2Index].id;
+            availableM2Slots.splice(validM2Index, 1);
+          } else if (availableM2Slots.length > 0 && availableM2Slots[0].id === m1Id && availableM1Slots.length > 0) {
+            // Edge case: the only M2 slot left is the same as our M1 slot
+            // Put the M1 slot back and try a different one
+            const currentM1 = m1Id;
+            m1Id = availableM1Slots.pop()?.id;
+            availableM1Slots.push({ id: currentM1 as string, name: "swap" } as Active); // hacky way to put it back
+            
+            m2Id = availableM2Slots.pop()?.id;
+          } else {
+             m2Id = availableM2Slots.pop()?.id; // just take what we can get if we run out of options
+          }
+        }
+
+        return {
+          ...pnm,
+          matchedWith: m1Id,
+          secondMatch: m2Id,
+          status: (m1Id || m2Id) ? 'matched' as const : 'unmatched' as const
+        };
+      });
+
+      return {
+        ...r,
+        pnms: newPnms
+      };
+    }));
+
+    toast.success("Auto-matched randomly!", {
+      className: "rounded-none text-xs font-bold bg-purple-50 text-purple-700 border-purple-200"
+    });
   };
 
   const handleActiveImport = () => {
@@ -388,7 +463,7 @@ export default function Dashboard() {
     const chains: string[] = [];
     const visited = new Set<string>();
 
-    for (const starter of dictForward.keys()) {
+    for (const starter of Array.from(dictForward.keys())) {
       if (!dictReverse.has(starter)) {
         let currentChain = starter;
         let currentName = starter;
@@ -407,7 +482,7 @@ export default function Dashboard() {
     }
 
     // Now look for loops/cycles that have no "start"
-    for (const starter of dictForward.keys()) {
+    for (const starter of Array.from(dictForward.keys())) {
       if (!visited.has(starter)) {
         let currentChain = starter;
         let currentName = starter;
@@ -499,6 +574,23 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-slate-800 hover:bg-slate-700 border-slate-800 text-white hover:text-white">
+                <Settings2 className="w-3 h-3 mr-1" /> Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-none shadow-xl border-slate-200">
+              <DropdownMenuItem onClick={handleAutoMatch} className="text-xs cursor-pointer rounded-none focus:bg-purple-50 focus:text-purple-700 py-2">
+                <Wand2 className="w-3.5 h-3.5 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-semibold">Auto-Match (Random)</span>
+                  <span className="text-[10px] text-slate-500">Randomly assign remaining active slots</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-green-50 hover:bg-green-100 border-green-200 text-green-700" onClick={exportToCSV}>
             <Download className="w-3 h-3 mr-1" /> Export CSV
           </Button>
