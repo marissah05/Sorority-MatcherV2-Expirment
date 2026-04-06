@@ -116,11 +116,7 @@ export default function Dashboard() {
       return;
     }
 
-    // Create a pool of available slots (2 for each active)
-    let availableM1Slots = [...actives];
-    let availableM2Slots = [...actives];
-
-    // Shuffle the slots to make it random
+    // Helper to shuffle array
     const shuffleArray = <T,>(array: T[]) => {
       const newArray = [...array];
       for (let i = newArray.length - 1; i > 0; i--) {
@@ -130,38 +126,74 @@ export default function Dashboard() {
       return newArray;
     };
 
-    availableM1Slots = shuffleArray(availableM1Slots);
-    availableM2Slots = shuffleArray(availableM2Slots);
-
     setRounds(prev => prev.map(r => {
       if (r.id !== activeRoundId) return r;
       
-      const newPnms = r.pnms.map((pnm, index) => {
+      // We will try to build chains that don't exceed 6 people
+      // A chain of 6 people means 5 links (A->B->C->D->E->F)
+      // This means we need to ensure that no chain of assignments gets too long.
+      
+      // The easiest way to keep chains short is to divide the actives into small isolated "pods" of size <= 6
+      // and only match PNMs to actives within the same pod.
+      
+      const shuffledActives = shuffleArray([...actives]);
+      const pods: Active[][] = [];
+      
+      // Group actives into pods of size 5 or 6 (to keep chains under 6)
+      // For simplicity, let's use pods of size chainLengthLimit
+      const POD_SIZE = chainLengthLimit;
+      for (let i = 0; i < shuffledActives.length; i += POD_SIZE) {
+        pods.push(shuffledActives.slice(i, i + POD_SIZE));
+      }
+
+      // Now create available slots from these pods
+      // Each pod has a set of M1 slots and M2 slots
+      // To ensure chains stay within the pod, a PNM's M1 and M2 must come from the SAME pod.
+      
+      const podSlots = pods.map(pod => ({
+        m1Slots: shuffleArray([...pod]),
+        m2Slots: shuffleArray([...pod])
+      }));
+
+      const newPnms = r.pnms.map((pnm) => {
         let m1Id: string | undefined = undefined;
         let m2Id: string | undefined = undefined;
 
-        // Try to assign M1
-        if (availableM1Slots.length > 0) {
-          m1Id = availableM1Slots.pop()?.id;
-        }
-
-        // Try to assign M2, ensuring it's not the same active as M1
-        if (availableM2Slots.length > 0) {
-          // Find an active in M2 slots that isn't the M1 we just assigned
-          const validM2Index = availableM2Slots.findIndex(a => a.id !== m1Id);
+        // Find a pod that still has both M1 and M2 slots available
+        // Prefer pods that have both, but if none, find any with M1 or M2
+        let selectedPodIndex = podSlots.findIndex(p => p.m1Slots.length > 0 && p.m2Slots.length > 0);
+        
+        if (selectedPodIndex !== -1) {
+          const pod = podSlots[selectedPodIndex];
+          
+          m1Id = pod.m1Slots.pop()?.id;
+          
+          // Find M2 in this pod that isn't M1
+          const validM2Index = pod.m2Slots.findIndex(a => a.id !== m1Id);
           if (validM2Index !== -1) {
-            m2Id = availableM2Slots[validM2Index].id;
-            availableM2Slots.splice(validM2Index, 1);
-          } else if (availableM2Slots.length > 0 && availableM2Slots[0].id === m1Id && availableM1Slots.length > 0) {
-            // Edge case: the only M2 slot left is the same as our M1 slot
-            // Put the M1 slot back and try a different one
+            m2Id = pod.m2Slots[validM2Index].id;
+            pod.m2Slots.splice(validM2Index, 1);
+          } else if (pod.m2Slots.length > 0 && pod.m2Slots[0].id === m1Id && pod.m1Slots.length > 0) {
+            // Swap if the only one left is the same
             const currentM1 = m1Id;
-            m1Id = availableM1Slots.pop()?.id;
-            availableM1Slots.push({ id: currentM1 as string, name: "swap" } as Active); // hacky way to put it back
-            
-            m2Id = availableM2Slots.pop()?.id;
+            m1Id = pod.m1Slots.pop()?.id;
+            pod.m1Slots.push({ id: currentM1 as string, name: "swap" } as Active);
+            m2Id = pod.m2Slots.pop()?.id;
           } else {
-             m2Id = availableM2Slots.pop()?.id; // just take what we can get if we run out of options
+            m2Id = pod.m2Slots.pop()?.id;
+          }
+        } else {
+          // If no pod has BOTH, just take whatever is left anywhere (fallback)
+          const fallbackM1Pod = podSlots.find(p => p.m1Slots.length > 0);
+          if (fallbackM1Pod) m1Id = fallbackM1Pod.m1Slots.pop()?.id;
+          
+          const fallbackM2Pod = podSlots.find(p => p.m2Slots.length > 0 && p.m2Slots[0].id !== m1Id);
+          if (fallbackM2Pod) {
+             m2Id = fallbackM2Pod.m2Slots.find(a => a.id !== m1Id)?.id;
+             if (m2Id) {
+                const idx = fallbackM2Pod.m2Slots.findIndex(a => a.id === m2Id);
+                fallbackM2Pod.m2Slots.splice(idx, 1);
+             }
           }
         }
 
@@ -179,7 +211,7 @@ export default function Dashboard() {
       };
     }));
 
-    toast.success("Auto-matched randomly!", {
+    toast.success("Auto-matched in small chains!", {
       className: "rounded-none text-xs font-bold bg-purple-50 text-purple-700 border-purple-200"
     });
   };
