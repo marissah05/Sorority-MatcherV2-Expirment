@@ -40,6 +40,14 @@ interface RoundData {
   pnms: PNM[];
 }
 
+interface ChainInfo {
+  activeIds: string[];
+  count: number;
+  display: string;
+  isCycle: boolean;
+  isOverLimit: boolean;
+}
+
 export default function Dashboard() {
   const [rounds, setRounds] = useState<RoundData[]>([
     { id: "r1", name: "Round 1", pnms: MOCK_PNMS },
@@ -55,7 +63,9 @@ export default function Dashboard() {
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
   const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
-  const [chainLengthLimit, setChainLengthLimit] = useState(5);
+  const [chainLengthLimit, setChainLengthLimit] = useState(6);
+  const [hoveredActiveId, setHoveredActiveId] = useState<string | null>(null);
+  const [hoveredPnmId, setHoveredPnmId] = useState<string | null>(null);
 
   const pool1Ref = useRef<HTMLDivElement>(null);
   const pool2Ref = useRef<HTMLDivElement>(null);
@@ -66,6 +76,180 @@ export default function Dashboard() {
 
   const usedActivesSlot1 = useMemo(() => new Set(activeRound.pnms.map(p => p.matchedWith).filter(Boolean)), [activeRound]);
   const usedActivesSlot2 = useMemo(() => new Set(activeRound.pnms.map(p => p.secondMatch).filter(Boolean)), [activeRound]);
+  const activeNameById = useMemo(() => new Map(actives.map(active => [active.id, active.name])), [actives]);
+
+  const buildChainAnalysis = (pnms: PNM[]) => {
+    const forward = new Map<string, string>();
+    const reverse = new Map<string, string>();
+    const nodes = new Set<string>();
+    const chains: ChainInfo[] = [];
+    const activeToChain = new Map<string, ChainInfo>();
+    const visited = new Set<string>();
+
+    pnms.forEach(pnm => {
+      if (pnm.matchedWith && pnm.secondMatch) {
+        forward.set(pnm.matchedWith, pnm.secondMatch);
+        reverse.set(pnm.secondMatch, pnm.matchedWith);
+        nodes.add(pnm.matchedWith);
+        nodes.add(pnm.secondMatch);
+      }
+    });
+
+    const pushChain = (activeIds: string[], isCycle: boolean) => {
+      const names = activeIds.map(activeId => activeNameById.get(activeId) || activeId);
+      const display = isCycle ? [...names, names[0]].join(" -> ") : names.join(" -> ");
+      const chain: ChainInfo = {
+        activeIds,
+        count: activeIds.length,
+        display,
+        isCycle,
+        isOverLimit: activeIds.length > chainLengthLimit,
+      };
+
+      chains.push(chain);
+      activeIds.forEach(activeId => activeToChain.set(activeId, chain));
+    };
+
+    Array.from(nodes).forEach(starter => {
+      if (reverse.has(starter) || visited.has(starter)) {
+        return;
+      }
+
+      const activeIds = [starter];
+      visited.add(starter);
+      let current = starter;
+      let safetyCounter = 0;
+
+      while (forward.has(current) && safetyCounter < nodes.size + 1) {
+        const next = forward.get(current)!;
+        if (visited.has(next)) {
+          break;
+        }
+        activeIds.push(next);
+        visited.add(next);
+        current = next;
+        safetyCounter += 1;
+      }
+
+      pushChain(activeIds, false);
+    });
+
+    Array.from(nodes).forEach(starter => {
+      if (visited.has(starter)) {
+        return;
+      }
+
+      const activeIds = [starter];
+      visited.add(starter);
+      let current = starter;
+      let safetyCounter = 0;
+      let isCycle = false;
+
+      while (forward.has(current) && safetyCounter < nodes.size + 1) {
+        const next = forward.get(current)!;
+        if (next === starter) {
+          isCycle = true;
+          break;
+        }
+        if (visited.has(next)) {
+          break;
+        }
+        activeIds.push(next);
+        visited.add(next);
+        current = next;
+        safetyCounter += 1;
+      }
+
+      pushChain(activeIds, isCycle);
+    });
+
+    return {
+      chains,
+      activeToChain,
+      longestChainCount: chains.reduce((max, chain) => Math.max(max, chain.count), 0),
+      overLimitCount: chains.filter(chain => chain.isOverLimit).length,
+    };
+  };
+
+  const chainAnalysis = useMemo(() => buildChainAnalysis(activeRound.pnms), [activeRound.pnms, activeNameById, chainLengthLimit]);
+
+  const highlightedActiveIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    const addLinkedActives = (activeId?: string) => {
+      if (!activeId) {
+        return;
+      }
+
+      const chain = chainAnalysis.activeToChain.get(activeId);
+      if (chain) {
+        chain.activeIds.forEach(linkedId => ids.add(linkedId));
+        return;
+      }
+
+      ids.add(activeId);
+    };
+
+    if (hoveredActiveId) {
+      addLinkedActives(hoveredActiveId);
+    }
+
+    if (hoveredPnmId) {
+      const hoveredPnm = activeRound.pnms.find(pnm => pnm.id === hoveredPnmId);
+      if (hoveredPnm) {
+        addLinkedActives(hoveredPnm.matchedWith);
+        addLinkedActives(hoveredPnm.secondMatch);
+      }
+    }
+
+    return ids;
+  }, [hoveredActiveId, hoveredPnmId, activeRound.pnms, chainAnalysis]);
+
+  const hasLinkedHighlight = highlightedActiveIds.size > 0;
+
+  const dropWarnings = useMemo(() => {
+    const warnings = new Map<string, { alreadyUsedInSlot: boolean; chainCount: number; isOverLimit: boolean }>();
+
+    if (draggingType !== 'active' || !draggingId) {
+      return warnings;
+    }
+
+    const draggedActiveId = draggingId.split('-')[0];
+
+    activeRound.pnms.forEach(pnm => {
+      ([1, 2] as const).forEach(slot => {
+        const slotKey = slot === 1 ? 'matchedWith' : 'secondMatch';
+        const simulatedPnms = activeRound.pnms.map(currentPnm => {
+          if (currentPnm.id !== pnm.id) {
+            return currentPnm;
+          }
+
+          return {
+            ...currentPnm,
+            [slotKey]: draggedActiveId,
+            status: 'matched' as const,
+          };
+        });
+        const analysis = buildChainAnalysis(simulatedPnms);
+        const relatedActiveIds = [
+          draggedActiveId,
+          slot === 1 ? pnm.secondMatch : pnm.matchedWith,
+        ].filter(Boolean) as string[];
+        const relatedChains = relatedActiveIds
+          .map(activeId => analysis.activeToChain.get(activeId))
+          .filter((chain): chain is ChainInfo => Boolean(chain));
+        const chainCount = relatedChains.length ? Math.max(...relatedChains.map(chain => chain.count)) : 1;
+
+        warnings.set(`${pnm.id}-${slot}`, {
+          alreadyUsedInSlot: activeRound.pnms.some(otherPnm => otherPnm.id !== pnm.id && otherPnm[slotKey] === draggedActiveId),
+          chainCount,
+          isOverLimit: chainCount > chainLengthLimit,
+        });
+      });
+    });
+
+    return warnings;
+  }, [draggingType, draggingId, activeRound.pnms, activeNameById, chainLengthLimit]);
 
   const handlePnmImport = () => {
     if (!pnmPasteData.trim()) return;
@@ -110,108 +294,86 @@ export default function Dashboard() {
     setIsPnmImportOpen(false);
   };
 
-  const handleAutoMatch = () => {
+  const shuffleArray = <T,>(array: T[]) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
+  const buildAutoMatchAssignments = (mode: 'random' | 'balanced') => {
+    const podSize = Math.max(2, chainLengthLimit);
+    const shuffledActives = shuffleArray([...actives]);
+    const pods: Active[][] = [];
+
+    for (let i = 0; i < shuffledActives.length; i += podSize) {
+      pods.push(shuffledActives.slice(i, i + podSize));
+    }
+
+    const podAssignments = pods.map(pod => {
+      if (pod.length === 1) {
+        return [{ matchedWith: pod[0].id, secondMatch: undefined }];
+      }
+
+      const base = mode === 'random' ? shuffleArray([...pod]) : [...pod];
+      const offset = mode === 'random' ? Math.floor(Math.random() * (base.length - 1)) + 1 : 1;
+      const rotated = base.map((_, index) => base[(index + offset) % base.length]);
+
+      return base.map((active, index) => ({
+        matchedWith: active.id,
+        secondMatch: rotated[index].id,
+      }));
+    });
+
+    if (mode === 'balanced') {
+      const balancedAssignments: { matchedWith?: string; secondMatch?: string }[] = [];
+      let index = 0;
+
+      while (podAssignments.some(pod => index < pod.length)) {
+        podAssignments.forEach(pod => {
+          if (index < pod.length) {
+            balancedAssignments.push(pod[index]);
+          }
+        });
+        index += 1;
+      }
+
+      return balancedAssignments;
+    }
+
+    return shuffleArray(podAssignments.flat());
+  };
+
+  const applyAutoMatch = (mode: 'random' | 'balanced') => {
     if (actives.length === 0 || activeRound.pnms.length === 0) {
       toast.error("Need both PNMs and Actives to auto-match", { className: "rounded-none text-xs font-bold" });
       return;
     }
 
-    // Helper to shuffle array
-    const shuffleArray = <T,>(array: T[]) => {
-      const newArray = [...array];
-      for (let i = newArray.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    const assignments = buildAutoMatchAssignments(mode);
+
+    setRounds(prev => prev.map(round => {
+      if (round.id !== activeRoundId) {
+        return round;
       }
-      return newArray;
-    };
-
-    setRounds(prev => prev.map(r => {
-      if (r.id !== activeRoundId) return r;
-      
-      // We will try to build chains that don't exceed 6 people
-      // A chain of 6 people means 5 links (A->B->C->D->E->F)
-      // This means we need to ensure that no chain of assignments gets too long.
-      
-      // The easiest way to keep chains short is to divide the actives into small isolated "pods" of size <= 6
-      // and only match PNMs to actives within the same pod.
-      
-      const shuffledActives = shuffleArray([...actives]);
-      const pods: Active[][] = [];
-      
-      // Group actives into pods of size 5 or 6 (to keep chains under 6)
-      // For simplicity, let's use pods of size chainLengthLimit
-      const POD_SIZE = chainLengthLimit;
-      for (let i = 0; i < shuffledActives.length; i += POD_SIZE) {
-        pods.push(shuffledActives.slice(i, i + POD_SIZE));
-      }
-
-      // Now create available slots from these pods
-      // Each pod has a set of M1 slots and M2 slots
-      // To ensure chains stay within the pod, a PNM's M1 and M2 must come from the SAME pod.
-      
-      const podSlots = pods.map(pod => ({
-        m1Slots: shuffleArray([...pod]),
-        m2Slots: shuffleArray([...pod])
-      }));
-
-      const newPnms = r.pnms.map((pnm) => {
-        let m1Id: string | undefined = undefined;
-        let m2Id: string | undefined = undefined;
-
-        // Find a pod that still has both M1 and M2 slots available
-        // Prefer pods that have both, but if none, find any with M1 or M2
-        let selectedPodIndex = podSlots.findIndex(p => p.m1Slots.length > 0 && p.m2Slots.length > 0);
-        
-        if (selectedPodIndex !== -1) {
-          const pod = podSlots[selectedPodIndex];
-          
-          m1Id = pod.m1Slots.pop()?.id;
-          
-          // Find M2 in this pod that isn't M1
-          const validM2Index = pod.m2Slots.findIndex(a => a.id !== m1Id);
-          if (validM2Index !== -1) {
-            m2Id = pod.m2Slots[validM2Index].id;
-            pod.m2Slots.splice(validM2Index, 1);
-          } else if (pod.m2Slots.length > 0 && pod.m2Slots[0].id === m1Id && pod.m1Slots.length > 0) {
-            // Swap if the only one left is the same
-            const currentM1 = m1Id;
-            m1Id = pod.m1Slots.pop()?.id;
-            pod.m1Slots.push({ id: currentM1 as string, name: "swap" } as Active);
-            m2Id = pod.m2Slots.pop()?.id;
-          } else {
-            m2Id = pod.m2Slots.pop()?.id;
-          }
-        } else {
-          // If no pod has BOTH, just take whatever is left anywhere (fallback)
-          const fallbackM1Pod = podSlots.find(p => p.m1Slots.length > 0);
-          if (fallbackM1Pod) m1Id = fallbackM1Pod.m1Slots.pop()?.id;
-          
-          const fallbackM2Pod = podSlots.find(p => p.m2Slots.length > 0 && p.m2Slots[0].id !== m1Id);
-          if (fallbackM2Pod) {
-             m2Id = fallbackM2Pod.m2Slots.find(a => a.id !== m1Id)?.id;
-             if (m2Id) {
-                const idx = fallbackM2Pod.m2Slots.findIndex(a => a.id === m2Id);
-                fallbackM2Pod.m2Slots.splice(idx, 1);
-             }
-          }
-        }
-
-        return {
-          ...pnm,
-          matchedWith: m1Id,
-          secondMatch: m2Id,
-          status: (m1Id || m2Id) ? 'matched' as const : 'unmatched' as const
-        };
-      });
 
       return {
-        ...r,
-        pnms: newPnms
+        ...round,
+        pnms: round.pnms.map((pnm, index) => {
+          const assignment = assignments[index];
+          return {
+            ...pnm,
+            matchedWith: assignment?.matchedWith,
+            secondMatch: assignment?.secondMatch,
+            status: assignment?.matchedWith || assignment?.secondMatch ? 'matched' as const : 'unmatched' as const,
+          };
+        }),
       };
     }));
 
-    toast.success("Auto-matched in small chains!", {
+    toast.success(mode === 'balanced' ? "Balanced auto-match complete" : "Random auto-match complete", {
       className: "rounded-none text-xs font-bold bg-purple-50 text-purple-700 border-purple-200"
     });
   };
@@ -432,8 +594,7 @@ export default function Dashboard() {
         return;
       }
 
-      const pnm = activeRound.pnms.find(p => p.id === overData.pnm.id);
-      if (!pnm) return;
+      const projectedDrop = dropWarnings.get(`${overData.pnm.id}-${overData.slot}`);
 
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
@@ -449,6 +610,13 @@ export default function Dashboard() {
           })
         };
       }));
+
+      if (projectedDrop?.isOverLimit) {
+        toast.warning(`This move creates a ${projectedDrop.chainCount}-person chain.`, {
+          className: "rounded-none text-xs font-bold bg-amber-50 text-amber-800 border-amber-200",
+          duration: 3500
+        });
+      }
     }
 
     if (draggingType === 'pnm' && active.id !== over.id) {
@@ -479,64 +647,7 @@ export default function Dashboard() {
     }));
   };
 
-  const generateChains = () => {
-    const dictForward = new Map<string, string>();
-    const dictReverse = new Map<string, string>();
-    
-    activeRound.pnms.forEach(pnm => {
-      const m1Name = actives.find(a => a.id === pnm.matchedWith)?.name;
-      const m2Name = actives.find(a => a.id === pnm.secondMatch)?.name;
-      if (m1Name && m2Name && m1Name !== "Unmatched" && m2Name !== "Unmatched") {
-        dictForward.set(m1Name, m2Name);
-        dictReverse.set(m2Name, m1Name);
-      }
-    });
-
-    const chains: string[] = [];
-    const visited = new Set<string>();
-
-    for (const starter of Array.from(dictForward.keys())) {
-      if (!dictReverse.has(starter)) {
-        let currentChain = starter;
-        let currentName = starter;
-        let safetyCounter = 0;
-        
-        while (dictForward.has(currentName) && safetyCounter <= 100) {
-          visited.add(currentName);
-          const nextName = dictForward.get(currentName)!;
-          currentChain += ` -> ${nextName}`;
-          currentName = nextName;
-          safetyCounter++;
-        }
-        visited.add(currentName);
-        chains.push(currentChain);
-      }
-    }
-
-    // Now look for loops/cycles that have no "start"
-    for (const starter of Array.from(dictForward.keys())) {
-      if (!visited.has(starter)) {
-        let currentChain = starter;
-        let currentName = starter;
-        let safetyCounter = 0;
-        
-        while (dictForward.has(currentName) && !visited.has(dictForward.get(currentName)!) && safetyCounter <= 100) {
-          visited.add(currentName);
-          const nextName = dictForward.get(currentName)!;
-          currentChain += ` -> ${nextName}`;
-          currentName = nextName;
-          safetyCounter++;
-        }
-        visited.add(currentName);
-        if (dictForward.has(currentName)) {
-           currentChain += ` -> ${dictForward.get(currentName)!}`;
-        }
-        chains.push(currentChain);
-      }
-    }
-    
-    return chains;
-  };
+  const generateChains = () => chainAnalysis.chains.map(chain => chain.display);
 
   const exportToCSV = () => {
     const escapeCSV = (str: string) => {
@@ -612,12 +723,20 @@ export default function Dashboard() {
                 <Settings2 className="w-3 h-3 mr-1" /> Actions
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-none shadow-xl border-slate-200">
-              <DropdownMenuItem onClick={handleAutoMatch} className="text-xs cursor-pointer rounded-none focus:bg-purple-50 focus:text-purple-700 py-2">
+            <DropdownMenuContent align="end" className="w-56 rounded-none shadow-xl border-slate-200">
+              <DropdownMenuItem onClick={() => applyAutoMatch('random')} className="text-xs cursor-pointer rounded-none focus:bg-purple-50 focus:text-purple-700 py-2" data-testid="button-auto-match-random">
                 <Wand2 className="w-3.5 h-3.5 mr-2" />
                 <div className="flex flex-col">
                   <span className="font-semibold">Auto-Match (Random)</span>
-                  <span className="text-[10px] text-slate-500">Randomly assign remaining active slots</span>
+                  <span className="text-[10px] text-slate-500">Random pod matching capped by the chain limit</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => applyAutoMatch('balanced')} className="text-xs cursor-pointer rounded-none focus:bg-blue-50 focus:text-blue-700 py-2" data-testid="button-auto-match-balanced">
+                <GitMerge className="w-3.5 h-3.5 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-semibold">Auto-Match (Balanced)</span>
+                  <span className="text-[10px] text-slate-500">Short chains with a more even spread across pods</span>
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -640,37 +759,40 @@ export default function Dashboard() {
                   Live preview of bump groups based on current matches.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex items-center gap-2 px-0 py-2 border-b">
-                <span className="text-xs font-semibold text-slate-600">Chain Limit Alert:</span>
-                <input 
-                  type="number" 
-                  min="2" 
-                  max="20" 
-                  value={chainLengthLimit} 
-                  onChange={(e) => setChainLengthLimit(Number(e.target.value))}
-                  className="w-16 h-7 border px-2 text-xs"
-                />
-                <span className="text-[10px] text-slate-500">actives per chain</span>
+              <div className="flex items-center justify-between gap-3 px-0 py-2 border-b">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-600">Chain Limit Alert:</span>
+                  <input 
+                    type="number" 
+                    min="2" 
+                    max="20" 
+                    value={chainLengthLimit} 
+                    onChange={(e) => setChainLengthLimit(Math.max(2, Number(e.target.value) || 2))}
+                    className="w-16 h-7 border px-2 text-xs"
+                    data-testid="input-chain-limit"
+                  />
+                  <span className="text-[10px] text-slate-500">actives per chain</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  <span data-testid="text-longest-chain">Longest {chainAnalysis.longestChainCount || 0}</span>
+                  <span>•</span>
+                  <span data-testid="text-chains-over-limit">Over limit {chainAnalysis.overLimitCount}</span>
+                </div>
               </div>
               <ScrollArea className="flex-1 -mx-4 px-4 py-2">
-                {generateChains().length > 0 ? (
+                {chainAnalysis.chains.length > 0 ? (
                   <div className="space-y-2">
-                    {generateChains().map((chain, idx) => {
-                      const count = chain.split('->').length;
-                      const isOverLimit = count > chainLengthLimit;
-                      
-                      return (
-                        <div key={idx} className={`p-3 bg-slate-50 border text-sm font-medium shadow-sm flex items-start justify-between gap-4 ${isOverLimit ? 'border-red-300 bg-red-50' : 'border-slate-100 text-slate-700'}`}>
-                          <div className={isOverLimit ? 'text-red-800' : ''}>{chain}</div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isOverLimit && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                            <Badge variant="outline" className={`text-[10px] rounded-none ${isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : ''}`}>
-                              {count}
-                            </Badge>
-                          </div>
+                    {chainAnalysis.chains.map((chain, idx) => (
+                      <div key={idx} className={`p-3 bg-slate-50 border text-sm font-medium shadow-sm flex items-start justify-between gap-4 ${chain.isOverLimit ? 'border-red-300 bg-red-50' : 'border-slate-100 text-slate-700'}`}>
+                        <div className={chain.isOverLimit ? 'text-red-800' : ''}>{chain.display}</div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {chain.isOverLimit && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                          <Badge variant="outline" className={`text-[10px] rounded-none ${chain.isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : ''}`}>
+                            {chain.count}
+                          </Badge>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-slate-400">
@@ -748,16 +870,30 @@ export default function Dashboard() {
                       items={filteredPnms.map(p => p.id)} 
                       strategy={verticalListSortingStrategy}
                     >
-                      {filteredPnms.map(pnm => (
-                        <SortablePNMRow 
-                          key={pnm.id} 
-                          pnm={pnm} 
-                          pnms={activeRound.pnms}
-                          actives={actives} 
-                          onUnmatch={handleUnmatch} 
-                          onDelete={handleDeletePnm} 
-                        />
-                      ))}
+                      {filteredPnms.map(pnm => {
+                        const isHighlighted = Boolean(
+                          (pnm.matchedWith && highlightedActiveIds.has(pnm.matchedWith)) ||
+                          (pnm.secondMatch && highlightedActiveIds.has(pnm.secondMatch))
+                        );
+
+                        return (
+                          <SortablePNMRow 
+                            key={pnm.id} 
+                            pnm={pnm} 
+                            pnms={activeRound.pnms}
+                            actives={actives} 
+                            onUnmatch={handleUnmatch} 
+                            onDelete={handleDeletePnm}
+                            onHoverStart={() => setHoveredPnmId(pnm.id)}
+                            onHoverEnd={() => setHoveredPnmId(current => current === pnm.id ? null : current)}
+                            isHighlighted={isHighlighted}
+                            isDimmed={hasLinkedHighlight && !isHighlighted}
+                            dropPreview1={dropWarnings.get(`${pnm.id}-1`)}
+                            dropPreview2={dropWarnings.get(`${pnm.id}-2`)}
+                            highlightedActiveIds={highlightedActiveIds}
+                          />
+                        );
+                      })}
                     </SortableContext>
                   </TableBody>
                 </Table>
@@ -784,9 +920,20 @@ export default function Dashboard() {
                     viewportRef={pool1Ref}
                   >
                     <div className="space-y-1 pr-1 pb-4">
-                      {actives.map(active => (
-                        <ActiveDraggable key={`${active.id}-1`} active={{ ...active, id: `${active.id}-1` }} isMatched={usedActivesSlot1.has(active.id)} />
-                      ))}
+                      {actives.map(active => {
+                        const isHighlighted = highlightedActiveIds.has(active.id);
+                        return (
+                          <ActiveDraggable
+                            key={`${active.id}-1`}
+                            active={{ ...active, id: `${active.id}-1` }}
+                            isMatched={usedActivesSlot1.has(active.id)}
+                            isHighlighted={isHighlighted}
+                            isDimmed={hasLinkedHighlight && !isHighlighted}
+                            onHoverStart={() => setHoveredActiveId(active.id)}
+                            onHoverEnd={() => setHoveredActiveId(current => current === active.id ? null : current)}
+                          />
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
@@ -798,9 +945,20 @@ export default function Dashboard() {
                     viewportRef={pool2Ref}
                   >
                     <div className="space-y-1 pr-1 pb-4">
-                      {actives.map(active => (
-                        <ActiveDraggable key={`${active.id}-2`} active={{ ...active, id: `${active.id}-2` }} isMatched={usedActivesSlot2.has(active.id)} />
-                      ))}
+                      {actives.map(active => {
+                        const isHighlighted = highlightedActiveIds.has(active.id);
+                        return (
+                          <ActiveDraggable
+                            key={`${active.id}-2`}
+                            active={{ ...active, id: `${active.id}-2` }}
+                            isMatched={usedActivesSlot2.has(active.id)}
+                            isHighlighted={isHighlighted}
+                            isDimmed={hasLinkedHighlight && !isHighlighted}
+                            onHoverStart={() => setHoveredActiveId(active.id)}
+                            onHoverEnd={() => setHoveredActiveId(current => current === active.id ? null : current)}
+                          />
+                        );
+                      })}
                     </div>
                   </ScrollArea>
                 </div>
