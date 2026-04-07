@@ -691,9 +691,33 @@ export default function Dashboard() {
       finalRows.push([...row, "", starterName, chainStr]);
     }
 
-    const unusedActives = actives.filter(active => 
-      !usedActivesSlot1.has(active.id) && !usedActivesSlot2.has(active.id)
-    ).map(a => escapeCSV(a.name));
+    const unusedBump1Actives = actives
+      .filter(active => !usedActivesSlot1.has(active.id))
+      .map(active => escapeCSV(active.name));
+
+    const unusedBump2Actives = actives
+      .filter(active => !usedActivesSlot2.has(active.id))
+      .map(active => escapeCSV(active.name));
+
+    const completelyUnusedActives = actives
+      .filter(active => !usedActivesSlot1.has(active.id) && !usedActivesSlot2.has(active.id))
+      .map(active => escapeCSV(active.name));
+
+    const unusedRows: string[][] = [];
+    const maxUnusedRows = Math.max(
+      unusedBump1Actives.length,
+      unusedBump2Actives.length,
+      completelyUnusedActives.length,
+      1,
+    );
+
+    for (let i = 0; i < maxUnusedRows; i++) {
+      unusedRows.push([
+        unusedBump1Actives[i] || "",
+        unusedBump2Actives[i] || "",
+        completelyUnusedActives[i] || "",
+      ]);
+    }
 
     const csvContent = [
       ["--- MATCHUPS ---"],
@@ -701,7 +725,8 @@ export default function Dashboard() {
       ...finalRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
-      ...unusedActives.map(name => [name])
+      ["Unused Bump 1", "Unused Bump 2", "Completely Unused"],
+      ...unusedRows
     ].map(e => e.join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
