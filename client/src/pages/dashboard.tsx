@@ -44,6 +44,7 @@ interface ChainInfo {
   activeIds: string[];
   count: number;
   display: string;
+  starterName: string;
   handoffDisplay: string;
   isCycle: boolean;
   isOverLimit: boolean;
@@ -100,6 +101,7 @@ export default function Dashboard() {
     const pushChain = (activeIds: string[], isCycle: boolean) => {
       const names = activeIds.map(activeId => activeNameById.get(activeId) || activeId);
       const display = isCycle ? [...names, names[0]].join(" -> ") : names.join(" -> ");
+      const starterName = names[0];
       const handoffNames = isCycle
         ? [...names.slice(1), names[0]]
         : names.slice(1);
@@ -108,6 +110,7 @@ export default function Dashboard() {
         activeIds,
         count: activeIds.length,
         display,
+        starterName,
         handoffDisplay,
         isCycle,
         isOverLimit: activeIds.length > chainLengthLimit,
@@ -658,7 +661,10 @@ export default function Dashboard() {
     }));
   };
 
-  const generateChains = () => chainAnalysis.chains.map(chain => chain.handoffDisplay);
+  const generateChains = () => chainAnalysis.chains.map(chain => ({
+    starterName: chain.starterName,
+    handoffDisplay: chain.handoffDisplay,
+  }));
 
   const exportToCSV = () => {
     const escapeCSV = (str: string) => {
@@ -680,8 +686,9 @@ export default function Dashboard() {
     const maxRows = Math.max(pnmRows.length, chains.length);
     for (let i = 0; i < maxRows; i++) {
       const row = pnmRows[i] || ["", "", "", ""];
-      const chainStr = chains[i] ? escapeCSV(chains[i]) : "";
-      finalRows.push([...row, "", chainStr]);
+      const starterName = chains[i] ? escapeCSV(chains[i].starterName) : "";
+      const chainStr = chains[i] ? escapeCSV(chains[i].handoffDisplay) : "";
+      finalRows.push([...row, "", starterName, chainStr]);
     }
 
     const unusedActives = actives.filter(active => 
@@ -690,7 +697,7 @@ export default function Dashboard() {
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Bump Chains"],
+      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Chain Starter", "Bump Chain"],
       ...finalRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
@@ -809,7 +816,11 @@ export default function Dashboard() {
                   <div className="space-y-2">
                     {chainAnalysis.chains.map((chain, idx) => (
                       <div key={idx} className={`p-3 bg-slate-50 border text-sm font-medium shadow-sm flex items-start justify-between gap-4 ${chain.isOverLimit ? 'border-red-300 bg-red-50' : 'border-slate-100 text-slate-700'}`}>
-                        <div className={chain.isOverLimit ? 'text-red-800' : ''}>{chain.handoffDisplay}</div>
+                        <div className={`flex flex-wrap items-center ${chain.isOverLimit ? 'text-red-800' : ''}`}>
+                          <span className={chain.isOverLimit ? 'text-red-400' : 'text-slate-400'}>{chain.starterName}</span>
+                          <span className={chain.isOverLimit ? 'text-red-300 px-1' : 'text-slate-300 px-1'}>→</span>
+                          <span>{chain.handoffDisplay}</span>
+                        </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {chain.isOverLimit && <AlertTriangle className="w-4 h-4 text-red-500" />}
                           <Badge variant="outline" className={`text-[10px] rounded-none ${chain.isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : ''}`}>
