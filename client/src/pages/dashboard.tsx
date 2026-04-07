@@ -44,6 +44,7 @@ interface ChainInfo {
   activeIds: string[];
   count: number;
   display: string;
+  handoffDisplay: string;
   isCycle: boolean;
   isOverLimit: boolean;
 }
@@ -64,6 +65,7 @@ export default function Dashboard() {
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
   const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
   const [chainLengthLimit, setChainLengthLimit] = useState(6);
+  const [isLinkedHoverEnabled, setIsLinkedHoverEnabled] = useState(true);
   const [hoveredActiveId, setHoveredActiveId] = useState<string | null>(null);
   const [hoveredPnmId, setHoveredPnmId] = useState<string | null>(null);
 
@@ -98,10 +100,15 @@ export default function Dashboard() {
     const pushChain = (activeIds: string[], isCycle: boolean) => {
       const names = activeIds.map(activeId => activeNameById.get(activeId) || activeId);
       const display = isCycle ? [...names, names[0]].join(" -> ") : names.join(" -> ");
+      const handoffNames = isCycle
+        ? [...names.slice(1), names[0]]
+        : names.slice(1);
+      const handoffDisplay = handoffNames.length > 0 ? handoffNames.join(" -> ") : names[0];
       const chain: ChainInfo = {
         activeIds,
         count: activeIds.length,
         display,
+        handoffDisplay,
         isCycle,
         isOverLimit: activeIds.length > chainLengthLimit,
       };
@@ -176,6 +183,10 @@ export default function Dashboard() {
   const highlightedActiveIds = useMemo(() => {
     const ids = new Set<string>();
 
+    if (!isLinkedHoverEnabled) {
+      return ids;
+    }
+
     const addLinkedActives = (activeId?: string) => {
       if (!activeId) {
         return;
@@ -203,9 +214,9 @@ export default function Dashboard() {
     }
 
     return ids;
-  }, [hoveredActiveId, hoveredPnmId, activeRound.pnms, chainAnalysis]);
+  }, [isLinkedHoverEnabled, hoveredActiveId, hoveredPnmId, activeRound.pnms, chainAnalysis]);
 
-  const hasLinkedHighlight = highlightedActiveIds.size > 0;
+  const hasLinkedHighlight = isLinkedHoverEnabled && highlightedActiveIds.size > 0;
 
   const dropWarnings = useMemo(() => {
     const warnings = new Map<string, { alreadyUsedInSlot: boolean; chainCount: number; isOverLimit: boolean }>();
@@ -647,7 +658,7 @@ export default function Dashboard() {
     }));
   };
 
-  const generateChains = () => chainAnalysis.chains.map(chain => chain.display);
+  const generateChains = () => chainAnalysis.chains.map(chain => chain.handoffDisplay);
 
   const exportToCSV = () => {
     const escapeCSV = (str: string) => {
@@ -717,6 +728,20 @@ export default function Dashboard() {
         </div>
         
         <div className="flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className={`h-7 text-[11px] rounded-none border ${isLinkedHoverEnabled ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            onClick={() => {
+              setIsLinkedHoverEnabled(prev => !prev);
+              setHoveredActiveId(null);
+              setHoveredPnmId(null);
+            }}
+            data-testid="button-toggle-linked-hover"
+          >
+            <GitMerge className="w-3 h-3 mr-1" /> {isLinkedHoverEnabled ? 'Linked Hover On' : 'Linked Hover Off'}
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-none bg-slate-800 hover:bg-slate-700 border-slate-800 text-white hover:text-white">
@@ -784,7 +809,7 @@ export default function Dashboard() {
                   <div className="space-y-2">
                     {chainAnalysis.chains.map((chain, idx) => (
                       <div key={idx} className={`p-3 bg-slate-50 border text-sm font-medium shadow-sm flex items-start justify-between gap-4 ${chain.isOverLimit ? 'border-red-300 bg-red-50' : 'border-slate-100 text-slate-700'}`}>
-                        <div className={chain.isOverLimit ? 'text-red-800' : ''}>{chain.display}</div>
+                        <div className={chain.isOverLimit ? 'text-red-800' : ''}>{chain.handoffDisplay}</div>
                         <div className="flex items-center gap-2 shrink-0">
                           {chain.isOverLimit && <AlertTriangle className="w-4 h-4 text-red-500" />}
                           <Badge variant="outline" className={`text-[10px] rounded-none ${chain.isOverLimit ? 'bg-red-100 text-red-700 border-red-200' : ''}`}>
