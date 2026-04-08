@@ -722,7 +722,7 @@ export default function Dashboard() {
 
     const csvContent = [
       ["--- MATCHUPS ---"],
-      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "Chain Starter", "Bump Chain"],
+      ["ID Number", "PNM Name", "Match 1", "Match 2", "", "First Switch", "Then Goes To"],
       ...finalRows,
       [""],
       ["--- UNUSED ACTIVES ---"],
