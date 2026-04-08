@@ -811,7 +811,7 @@ export default function Dashboard() {
           <Tabs value={activeRoundId} onValueChange={setActiveRoundId} className="w-auto min-w-0">
             <TabsList className="h-9 border border-slate-200/80 bg-white/90 p-1 rounded-none shadow-[0_10px_22px_-18px_rgba(15,23,42,0.35)]">
               {rounds.map(r => (
-                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3.5 h-7 rounded-none text-slate-600 data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm" data-testid={`tab-round-${r.id}`}>
+                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3.5 h-7 rounded-none border border-transparent text-slate-600 transition-all data-[state=active]:border-violet-300 data-[state=active]:bg-[linear-gradient(180deg,rgba(124,58,237,0.96),rgba(91,33,182,0.96))] data-[state=active]:text-white data-[state=active]:shadow-[0_10px_20px_-16px_rgba(91,33,182,0.75)]" data-testid={`tab-round-${r.id}`}>
                   {r.name}
                 </TabsTrigger>
               ))}
@@ -1000,6 +1000,12 @@ export default function Dashboard() {
                     <Search className="h-3.5 w-3.5 text-slate-500" />
                   </div>
                   <Input placeholder="Search PNMs..." className="h-8 text-[12px] max-w-xs py-0 rounded-none border-slate-200 bg-white/95 shadow-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="input-search-pnms" />
+                  <div className="h-8 border border-violet-200 bg-violet-50/80 px-3 flex items-center gap-2 shadow-[0_10px_20px_-18px_rgba(91,33,182,0.45)]">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-violet-500">Round Progress</span>
+                    <span className="text-[11px] font-semibold text-violet-800" data-testid="text-round-match-summary">
+                      {activeRound.pnms.filter((pnm) => pnm.matchedWith && pnm.secondMatch).length} / {activeRound.pnms.length} fully matched
+                    </span>
+                  </div>
                   <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="h-8 rounded-none border-slate-200 bg-white/95 px-3 text-[11px] text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] hover:bg-slate-50" data-testid="button-import-pnms">
@@ -1048,7 +1054,7 @@ export default function Dashboard() {
                         items={filteredPnms.map(p => p.id)} 
                         strategy={verticalListSortingStrategy}
                       >
-                        {filteredPnms.map(pnm => {
+                        {filteredPnms.map((pnm, index) => {
                           const isHighlighted = Boolean(
                             (pnm.matchedWith && highlightedActiveIds.has(pnm.matchedWith)) ||
                             (pnm.secondMatch && highlightedActiveIds.has(pnm.secondMatch))
@@ -1060,6 +1066,7 @@ export default function Dashboard() {
                               pnm={pnm} 
                               pnms={activeRound.pnms}
                               actives={actives} 
+                              rowIndex={index}
                               onUnmatch={handleUnmatch} 
                               onDelete={handleDeletePnm}
                               onHoverStart={() => setHoveredPnmId(pnm.id)}

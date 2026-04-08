@@ -12,6 +12,7 @@ interface SortablePNMRowProps {
   pnm: PNM;
   pnms: PNM[];
   actives: Active[];
+  rowIndex: number;
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
   onDelete: (pnmId: string) => void;
   onHoverStart?: () => void;
@@ -31,7 +32,7 @@ interface SortablePNMRowProps {
   highlightedActiveIds: Set<string>;
 }
 
-export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete, onHoverStart, onHoverEnd, isHighlighted, isDimmed, dropPreview1, dropPreview2, highlightedActiveIds }: SortablePNMRowProps) {
+export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch, onDelete, onHoverStart, onHoverEnd, isHighlighted, isDimmed, dropPreview1, dropPreview2, highlightedActiveIds }: SortablePNMRowProps) {
   const {
     attributes,
     listeners,
@@ -80,7 +81,9 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
       onMouseLeave={onHoverEnd}
       data-testid={`row-pnm-${pnm.id}`}
       className={cn(
-        "h-10 border-b border-b-slate-100/90 hover:bg-slate-50/80 transition-all relative group",
+        "h-10 border-b border-b-slate-100/90 transition-all relative group",
+        rowIndex % 2 === 1 ? "bg-violet-50/45" : "bg-white/80",
+        !isDragging && !isHighlighted && "hover:bg-violet-100/55",
         isDragging && "z-50 bg-white shadow-[0_18px_36px_-26px_rgba(15,23,42,0.45)] opacity-85",
         isHighlighted && "bg-slate-100/90 shadow-[inset_3px_0_0_0_rgb(15_23_42)]",
         isDimmed && !isDragging && "opacity-45"
