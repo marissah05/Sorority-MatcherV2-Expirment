@@ -911,14 +911,11 @@ export default function Dashboard() {
             size="sm"
             onClick={handleUndo}
             disabled={undoStack.length === 0}
-            className="h-8 rounded-none border-violet-200 bg-violet-50/85 px-3 text-[11px] font-semibold text-violet-700 shadow-[0_10px_22px_-18px_rgba(91,33,182,0.45)] hover:bg-violet-100 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+            className="h-7 rounded-none border-violet-950 bg-violet-900 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_24px_-18px_rgba(76,29,149,0.65)] hover:bg-violet-800 hover:text-white disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
             data-testid="button-undo-action"
           >
-            <RotateCcw className="mr-2 h-3.5 w-3.5" />
-            Undo
-            <span className="ml-2 border-l border-violet-200/80 pl-2 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-500">
-              Ctrl/⌘ Z
-            </span>
+            <RotateCcw className="mr-1.5 h-3 w-3" />
+            Undo · Ctrl/⌘Z
           </Button>
           <div className="flex items-center gap-2 border border-slate-200/80 bg-white/80 px-2.5 py-1 rounded-none shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]">
             <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Round Name</span>
