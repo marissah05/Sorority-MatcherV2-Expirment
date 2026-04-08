@@ -804,29 +804,29 @@ export default function Dashboard() {
   const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col font-sans overflow-hidden text-[12px]">
-      <header className="bg-white border-b px-4 py-2 flex items-center justify-between gap-4 shrink-0">
+    <div className="h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96)_38%,_rgba(241,245,249,1))] flex flex-col font-sans overflow-hidden text-[12px] text-slate-800">
+      <header className="border-b border-slate-200/80 bg-white/90 px-4 py-2.5 flex items-center justify-between gap-4 shrink-0 backdrop-blur-xl shadow-[0_14px_28px_-24px_rgba(15,23,42,0.45)]">
         <div className="flex items-center gap-4 min-w-0">
-          <h1 className="font-bold text-base text-primary shrink-0">Bump Planner Pro</h1>
+          <h1 className="font-serif text-[18px] tracking-[-0.03em] text-slate-900 shrink-0">Bump Planner Pro</h1>
           <Tabs value={activeRoundId} onValueChange={setActiveRoundId} className="w-auto min-w-0">
-            <TabsList className="h-7 bg-slate-100 p-0.5 rounded-none">
+            <TabsList className="h-9 border border-slate-200/80 bg-white/90 p-1 rounded-none shadow-[0_10px_22px_-18px_rgba(15,23,42,0.35)]">
               {rounds.map(r => (
-                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3 h-6 rounded-none" data-testid={`tab-round-${r.id}`}>
+                <TabsTrigger key={r.id} value={r.id} className="text-[11px] px-3.5 h-7 rounded-none text-slate-600 data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm" data-testid={`tab-round-${r.id}`}>
                   {r.name}
                 </TabsTrigger>
               ))}
-              <Button variant="ghost" className="h-6 w-6 p-0 ml-0.5 hover:bg-white rounded-none" onClick={handleAddRound} data-testid="button-add-round">+</Button>
+              <Button variant="ghost" className="h-7 w-7 p-0 ml-0.5 rounded-none border border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900" onClick={handleAddRound} data-testid="button-add-round">+</Button>
             </TabsList>
           </Tabs>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Round Name</span>
+        <div className="flex items-center gap-2 shrink-0 border border-slate-200/80 bg-white/80 px-2.5 py-1 rounded-none shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]">
+          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Round Name</span>
           <Input
             value={activeRound.name}
             onChange={(e) => handleRoundNameChange(e.target.value)}
             onBlur={handleRoundNameBlur}
-            className="h-8 w-44 rounded-none border-slate-200 bg-slate-50 text-[12px]"
+            className="h-8 w-44 rounded-none border-slate-200 bg-slate-50/90 text-[12px] shadow-none"
             data-testid="input-round-name"
           />
         </div>
@@ -838,10 +838,10 @@ export default function Dashboard() {
         onDragEnd={handleDragEnd}
         collisionDetection={closestCenter}
       >
-        <div className="flex-1 flex overflow-hidden">
-          <aside className={`border-r border-slate-200 bg-white transition-all duration-200 ${isToolsMenuOpen ? 'w-60' : 'w-14'}`}>
+        <div className="flex-1 flex overflow-hidden p-2 gap-2">
+          <aside className={`border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.92))] shadow-[0_20px_40px_-30px_rgba(15,23,42,0.3)] transition-all duration-200 ${isToolsMenuOpen ? 'w-60' : 'w-14'}`}>
             <div className="h-full flex flex-col">
-              <div className="border-b border-slate-200 p-2 flex items-center justify-between gap-2">
+              <div className="border-b border-slate-200/80 p-3 flex items-center justify-between gap-2 bg-white/60 backdrop-blur-sm">
                 {isToolsMenuOpen ? (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Controls</p>
@@ -862,11 +862,11 @@ export default function Dashboard() {
               </div>
 
               <ScrollArea className="flex-1">
-                <div className="p-2 space-y-2">
+                <div className="p-2.5 space-y-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`h-9 text-[11px] rounded-none border w-full ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'} ${isLinkedHoverEnabled ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 hover:text-white' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                    className={`h-10 text-[11px] rounded-none border w-full shadow-[0_12px_24px_-22px_rgba(15,23,42,0.45)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'} ${isLinkedHoverEnabled ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800 hover:text-white' : 'bg-white/90 text-slate-600 border-slate-200 hover:bg-slate-50'}`}
                     onClick={() => {
                       setIsLinkedHoverEnabled(prev => !prev);
                       setHoveredActiveId(null);
@@ -880,7 +880,7 @@ export default function Dashboard() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full bg-slate-800 hover:bg-slate-700 border-slate-800 text-white hover:text-white ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} data-testid="button-actions-menu">
+                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-slate-800 hover:bg-slate-700 border-slate-800 text-white hover:text-white shadow-[0_12px_24px_-22px_rgba(15,23,42,0.45)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-actions-menu">
                         <Settings2 className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                         {isToolsMenuOpen ? 'Actions' : null}
                       </Button>
@@ -904,14 +904,14 @@ export default function Dashboard() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full bg-green-50 hover:bg-green-100 border-green-200 text-green-700 ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} onClick={exportToCSV} data-testid="button-export-csv">
+                  <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-green-50/95 hover:bg-green-100 border-green-200 text-green-700 shadow-[0_12px_24px_-22px_rgba(34,197,94,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} onClick={exportToCSV} data-testid="button-export-csv">
                     <Download className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                     {isToolsMenuOpen ? 'Export CSV' : null}
                   </Button>
 
                   <Dialog open={isBumpChainsOpen} onOpenChange={setIsBumpChainsOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} data-testid="button-view-chains">
+                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-purple-50/95 hover:bg-purple-100 border-purple-200 text-purple-700 shadow-[0_12px_24px_-22px_rgba(168,85,247,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-view-chains">
                         <ListOrdered className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                         {isToolsMenuOpen ? 'View Chains' : null}
                       </Button>
@@ -973,7 +973,7 @@ export default function Dashboard() {
                     </DialogContent>
                   </Dialog>
 
-                  <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} onClick={() => fileInputRef.current?.click()} data-testid="button-import-csv">
+                  <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-blue-50/95 hover:bg-blue-100 border-blue-200 text-blue-700 shadow-[0_12px_24px_-22px_rgba(59,130,246,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} onClick={() => fileInputRef.current?.click()} data-testid="button-import-csv">
                     <Upload className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                     {isToolsMenuOpen ? 'Import CSV' : null}
                   </Button>
@@ -987,7 +987,7 @@ export default function Dashboard() {
 
                   <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} data-testid="button-import-actives">
+                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-import-actives">
                         <Users className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                         {isToolsMenuOpen ? 'Import Actives' : null}
                       </Button>
@@ -1001,7 +1001,7 @@ export default function Dashboard() {
 
                   <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-9 text-[11px] rounded-none w-full ${isToolsMenuOpen ? 'justify-start px-3' : 'justify-center px-0'}`} data-testid="button-import-pnms">
+                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-import-pnms">
                         <ClipboardPaste className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
                         {isToolsMenuOpen ? 'Import PNMs' : null}
                       </Button>
@@ -1019,18 +1019,20 @@ export default function Dashboard() {
 
           <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
           <ResizablePanel defaultSize={75} minSize={30}>
-            <div className="h-full flex flex-col bg-white">
-              <div className="p-1.5 border-b flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1">
-                  <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Search PNMs..." className="h-7 text-[12px] max-w-xs py-0 rounded-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <div className="h-full flex flex-col bg-white/92 border border-slate-200/80 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.28)] overflow-hidden">
+              <div className="px-3 py-2.5 border-b border-slate-200/80 flex items-center justify-between gap-3 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.86))]">
+                <div className="flex items-center gap-2.5 flex-1">
+                  <div className="h-8 w-8 border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
+                    <Search className="h-3.5 w-3.5 text-slate-500" />
+                  </div>
+                  <Input placeholder="Search PNMs..." className="h-8 text-[12px] max-w-xs py-0 rounded-none border-slate-200 bg-white/95 shadow-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="input-search-pnms" />
                 </div>
-                <Badge variant="outline" className="text-[10px] h-5 py-0 rounded-none">{activeRound.pnms.length} PNMs</Badge>
+                <Badge variant="outline" className="text-[10px] h-6 px-2 rounded-none border-slate-200 bg-slate-50/90 text-slate-600">{activeRound.pnms.length} PNMs</Badge>
               </div>
               
               <ScrollArea className="flex-1">
                 <Table className="rounded-none">
-                  <TableHeader className="bg-slate-50/50 sticky top-0 z-20">
+                  <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-sm">
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-8"></TableHead>
                       <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Status</TableHead>
@@ -1076,25 +1078,28 @@ export default function Dashboard() {
             </div>
           </ResizablePanel>
 
-          <ResizableHandle withHandle className="bg-slate-200" />
+          <ResizableHandle withHandle className="bg-transparent" />
 
           <ResizablePanel defaultSize={25} minSize={15}>
-            <div className="h-full bg-slate-100/50 p-2 flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between mb-2 px-1 shrink-0">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Active Pool</h3>
-                <div className="flex gap-2">
-                   <UserCheck className="h-3 w-3 text-slate-400" />
+            <div className="h-full bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.92))] border border-slate-200/80 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.28)] p-2.5 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-3 px-0.5 shrink-0">
+                <div>
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Active Pool</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Right-click an active to edit the pool.</p>
+                </div>
+                <div className="flex gap-2 items-center">
+                   <div className="h-7 w-7 border border-slate-200 bg-white flex items-center justify-center shadow-sm"><UserCheck className="h-3 w-3 text-slate-400" /></div>
                 </div>
               </div>
               
-              <div className="flex-1 flex gap-1.5 overflow-hidden">
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1 shrink-0">M1 Pool</div>
+              <div className="flex-1 flex gap-2 overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-hidden border border-slate-200/80 bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
+                  <div className="text-[8px] font-bold text-center text-slate-500 uppercase tracking-[0.18em] py-2 border-b border-slate-100 shrink-0 bg-slate-50/80">M1 Pool</div>
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool1Ref}
                   >
-                    <div className="space-y-1 pr-1 pb-4">
+                    <div className="space-y-1.5 p-2 pb-4">
                       {actives.map(active => {
                         const isHighlighted = highlightedActiveIds.has(active.id);
                         return (
@@ -1116,14 +1121,14 @@ export default function Dashboard() {
                     </div>
                   </ScrollArea>
                 </div>
-                <div className="w-[1px] bg-slate-200 shrink-0" />
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="text-[8px] font-bold text-center text-slate-400 uppercase mb-1 shrink-0">M2 Pool</div>
+                <div className="w-px bg-slate-200/80 shrink-0" />
+                <div className="flex-1 flex flex-col overflow-hidden border border-slate-200/80 bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
+                  <div className="text-[8px] font-bold text-center text-slate-500 uppercase tracking-[0.18em] py-2 border-b border-slate-100 shrink-0 bg-slate-50/80">M2 Pool</div>
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool2Ref}
                   >
-                    <div className="space-y-1 pr-1 pb-4">
+                    <div className="space-y-1.5 p-2 pb-4">
                       {actives.map(active => {
                         const isHighlighted = highlightedActiveIds.has(active.id);
                         return (
@@ -1162,11 +1167,11 @@ export default function Dashboard() {
         }}>
           {draggingId ? (
             draggingType === 'pnm' ? (
-              <div className="w-full bg-white border border-primary shadow-2xl opacity-90 p-2 text-xs font-semibold">
+              <div className="w-full bg-white/95 border border-slate-200 shadow-[0_22px_44px_-24px_rgba(15,23,42,0.4)] opacity-95 p-2.5 text-xs font-semibold text-slate-800 rounded-none backdrop-blur-sm">
                 {activeRound.pnms.find(p => p.id === draggingId)?.name}
               </div>
             ) : (
-              <div className="py-1 px-2 border border-primary bg-white text-[12px] font-semibold shadow-xl opacity-90 scale-105 rounded-none">
+              <div className="py-1.5 px-2.5 border border-slate-200 bg-white/95 text-[12px] font-semibold text-slate-800 shadow-[0_22px_44px_-24px_rgba(15,23,42,0.4)] opacity-95 scale-105 rounded-none backdrop-blur-sm">
                 {actives.find(a => a.id === draggingId.split('-')[0])?.name}
               </div>
             )

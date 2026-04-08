@@ -28,8 +28,8 @@ export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch, i
     return (
       <div
         className={cn(
-          "flex items-center justify-between gap-1 px-2 py-0.5 border text-[11px] font-medium min-w-[100px] rounded-none transition-all",
-          isSlot1 ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-purple-50 border-purple-200 text-purple-700",
+          "flex items-center justify-between gap-1.5 px-2.5 py-1 border text-[11px] font-medium min-w-[112px] rounded-none transition-all shadow-[0_10px_20px_-18px_rgba(15,23,42,0.55)]",
+          isSlot1 ? "bg-sky-50/90 border-sky-200 text-sky-700" : "bg-violet-50/90 border-violet-200 text-violet-700",
           isDuplicate && "bg-red-50 border-red-500 text-red-700 animate-pulse",
           isHighlighted && "ring-1 ring-slate-900/10 shadow-sm",
           isDimmed && "opacity-40"

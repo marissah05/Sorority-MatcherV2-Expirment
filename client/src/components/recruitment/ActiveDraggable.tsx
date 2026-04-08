@@ -34,11 +34,11 @@ export default function ActiveDraggable({ active, isMatched, isHighlighted, isDi
       onContextMenu={onRightClick}
       data-testid={`button-active-${active.id}`}
       className={cn(
-        "touch-none cursor-grab active:cursor-grabbing py-1 px-2 border border-border bg-white text-[12px] font-medium shadow-sm transition-all hover:border-primary/50 rounded-none",
-        isDragging && "opacity-50 scale-105 shadow-md",
-        isMatched && "opacity-40",
-        isHighlighted && "border-blue-500 bg-blue-50 text-blue-700 shadow-md",
-        isDimmed && !isDragging && "opacity-25"
+        "touch-none cursor-grab active:cursor-grabbing py-1.5 px-2.5 border border-slate-200/90 bg-white/95 text-[12px] font-medium text-slate-700 shadow-[0_10px_18px_-16px_rgba(15,23,42,0.55)] transition-all hover:-translate-y-[1px] hover:border-slate-300 hover:shadow-[0_14px_24px_-18px_rgba(15,23,42,0.45)] rounded-none",
+        isDragging && "opacity-55 scale-[1.03] shadow-lg",
+        isMatched && "bg-slate-50/90 text-slate-400",
+        isHighlighted && "border-sky-400 bg-sky-50 text-sky-700 shadow-[0_14px_24px_-18px_rgba(14,116,144,0.45)]",
+        isDimmed && !isDragging && "opacity-30"
       )}
     >
       {active.name}
