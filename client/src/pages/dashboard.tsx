@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { 
   DndContext, 
   DragOverlay, 
@@ -117,6 +117,29 @@ export default function Dashboard() {
       className: "rounded-none text-xs font-bold"
     });
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isTypingTarget = target instanceof HTMLElement && (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      );
+
+      if (isTypingTarget) {
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !event.shiftKey && undoStack.length > 0) {
+        event.preventDefault();
+        handleUndo();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undoStack]);
 
   const handleAddRound = () => {
     pushUndoState();
@@ -893,6 +916,9 @@ export default function Dashboard() {
           >
             <RotateCcw className="mr-2 h-3.5 w-3.5" />
             Undo
+            <span className="ml-2 border-l border-violet-200/80 pl-2 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-500">
+              Ctrl/⌘ Z
+            </span>
           </Button>
           <div className="flex items-center gap-2 border border-slate-200/80 bg-white/80 px-2.5 py-1 rounded-none shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]">
             <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Round Name</span>
