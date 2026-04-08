@@ -75,7 +75,7 @@ export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch
       className={cn(
         "h-10 border-b border-b-slate-100/90 transition-all relative group",
         rowIndex % 2 === 1 ? "bg-violet-50/45" : "bg-white/80",
-        !isDragging && !isHighlighted && "hover:bg-violet-100/55",
+        !isDragging && !isHighlighted && "hover:bg-slate-100/85",
         isDragging && "z-50 bg-white shadow-[0_18px_36px_-26px_rgba(15,23,42,0.45)] opacity-85",
         isHighlighted && "bg-slate-100/90 shadow-[inset_3px_0_0_0_rgb(15_23_42)]",
         isDimmed && !isDragging && "opacity-45"
