@@ -100,12 +100,13 @@ export default function Dashboard() {
 
     const pushChain = (activeIds: string[], isCycle: boolean) => {
       const names = activeIds.map(activeId => activeNameById.get(activeId) || activeId);
-      const display = isCycle ? [...names, names[0]].join(" -> ") : names.join(" -> ");
-      const starterName = names[0];
+      const readOrderNames = [...names].reverse();
+      const display = isCycle ? [...readOrderNames, readOrderNames[0]].join(" -> ") : readOrderNames.join(" -> ");
+      const starterName = readOrderNames[0];
       const handoffNames = isCycle
-        ? [...names.slice(1), names[0]]
-        : names.slice(1);
-      const handoffDisplay = handoffNames.length > 0 ? handoffNames.join(" -> ") : names[0];
+        ? [...readOrderNames.slice(1), readOrderNames[0]]
+        : readOrderNames.slice(1);
+      const handoffDisplay = handoffNames.length > 0 ? handoffNames.join(" -> ") : readOrderNames[0];
       const chain: ChainInfo = {
         activeIds,
         count: activeIds.length,
@@ -813,7 +814,7 @@ export default function Dashboard() {
               <DialogHeader>
                 <DialogTitle>Current Bump Chains</DialogTitle>
                 <DialogDescription>
-                  Live preview of bump groups based on current matches.
+                  Read each chain left to right. Each name should switch with the next name to her right.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center justify-between gap-3 px-0 py-2 border-b">
