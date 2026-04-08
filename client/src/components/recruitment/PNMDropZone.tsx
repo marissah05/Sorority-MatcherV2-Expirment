@@ -30,13 +30,16 @@ export default function PNMDropZone({ pnm, slot, matchedActiveName, onUnmatch, i
         className={cn(
           "flex items-center justify-between gap-1.5 px-2.5 py-1 border text-[11px] font-medium min-w-[112px] rounded-none transition-all shadow-[0_10px_20px_-18px_rgba(15,23,42,0.55)]",
           isSlot1 ? "bg-sky-50/90 border-sky-200 text-sky-700" : "bg-violet-50/90 border-violet-200 text-violet-700",
-          isDuplicate && "bg-red-50 border-red-500 text-red-700 animate-pulse",
+          isDuplicate && "border-red-300 bg-[linear-gradient(90deg,rgba(254,242,242,1),rgba(255,255,255,0.96))] text-red-700 shadow-[inset_3px_0_0_0_rgb(239_68_68)]",
           isHighlighted && "ring-1 ring-slate-900/10 shadow-sm",
           isDimmed && "opacity-40"
         )}
         data-testid={`text-match-${slot}-${pnm.id}`}
       >
-        <span className="truncate">{matchedActiveName}</span>
+        <div className="min-w-0 flex-1">
+          <span className="truncate block">{matchedActiveName}</span>
+          {isDuplicate ? <span className="block text-[8px] font-bold uppercase tracking-[0.14em] text-red-500">Duplicate assignment</span> : null}
+        </div>
         <button
           onClick={() => onUnmatch(pnm.id, slot)}
           className="hover:text-destructive transition-colors leading-none"

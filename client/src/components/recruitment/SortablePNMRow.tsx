@@ -47,8 +47,14 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
   };
 
   const filledCount = [pnm.matchedWith, pnm.secondMatch].filter(Boolean).length;
+  const hasDuplicate1 = !!pnm.matchedWith && pnms.some(otherPnm => otherPnm.id !== pnm.id && otherPnm.matchedWith === pnm.matchedWith);
+  const hasDuplicate2 = !!pnm.secondMatch && pnms.some(otherPnm => otherPnm.id !== pnm.id && otherPnm.secondMatch === pnm.secondMatch);
+  const hasDuplicate = hasDuplicate1 || hasDuplicate2;
 
   const getStatusBadge = () => {
+    if (hasDuplicate) {
+      return <Badge className="bg-red-500 hover:bg-red-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold">Conflict</Badge>;
+    }
     if (filledCount === 2) {
       return <Badge className="bg-green-500 hover:bg-green-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold">Ready</Badge>;
     }
@@ -57,6 +63,14 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
     }
     return <Badge className="bg-red-500 hover:bg-red-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold text-nowrap">Missing Both</Badge>;
   };
+
+  const hoverSummary = hasDuplicate
+    ? { label: "Duplicate match", className: "border-red-200 bg-red-50 text-red-700" }
+    : filledCount === 2
+      ? { label: "2 of 2 matched", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
+      : filledCount === 1
+        ? { label: "1 spot open", className: "border-amber-200 bg-amber-50 text-amber-700" }
+        : { label: "Needs 2 matches", className: "border-slate-200 bg-slate-50 text-slate-600" };
 
   return (
     <TableRow
@@ -97,7 +111,7 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
           slot={1}
           matchedActiveName={actives.find(a => a.id === pnm.matchedWith)?.name}
           onUnmatch={onUnmatch}
-          isDuplicate={!!pnm.matchedWith && pnms.some(otherPnm => otherPnm.id !== pnm.id && otherPnm.matchedWith === pnm.matchedWith)}
+          isDuplicate={hasDuplicate1}
           isHighlighted={!!pnm.matchedWith && highlightedActiveIds.has(pnm.matchedWith)}
           isDimmed={isDimmed}
           dropPreview={dropPreview1}
@@ -109,22 +123,27 @@ export default function SortablePNMRow({ pnm, pnms, actives, onUnmatch, onDelete
           slot={2}
           matchedActiveName={actives.find(a => a.id === pnm.secondMatch)?.name}
           onUnmatch={onUnmatch}
-          isDuplicate={!!pnm.secondMatch && pnms.some(otherPnm => otherPnm.id !== pnm.id && otherPnm.secondMatch === pnm.secondMatch)}
+          isDuplicate={hasDuplicate2}
           isHighlighted={!!pnm.secondMatch && highlightedActiveIds.has(pnm.secondMatch)}
           isDimmed={isDimmed}
           dropPreview={dropPreview2}
         />
       </TableCell>
-      <TableCell className="py-0.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
-          onClick={() => onDelete(pnm.id)}
-          data-testid={`button-delete-pnm-${pnm.id}`}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+      <TableCell className="py-0.5 w-[138px]">
+        <div className="flex items-center justify-end gap-2">
+          <div className={cn("hidden whitespace-nowrap border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] transition-opacity duration-150 group-hover:inline-flex", hoverSummary.className)} data-testid={`status-row-summary-${pnm.id}`}>
+            {hoverSummary.label}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
+            onClick={() => onDelete(pnm.id)}
+            data-testid={`button-delete-pnm-${pnm.id}`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );

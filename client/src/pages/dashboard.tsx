@@ -1032,46 +1032,75 @@ export default function Dashboard() {
               
               <ScrollArea className="flex-1">
                 <Table className="rounded-none">
-                  <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-sm">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-8"></TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Status</TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">PNM Name & ID</TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 1</TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold">Bump Match 2</TableHead>
-                      <TableHead className="py-1 h-7 text-[10px] uppercase font-bold w-10"></TableHead>
+                  <TableHeader className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[inset_0_-1px_0_rgba(226,232,240,0.95)]">
+                    <TableRow className="sticky top-0 z-20 border-b border-slate-200/90 bg-slate-50/95 hover:bg-slate-50/95">
+                      <TableHead className="w-8 bg-slate-50/95"></TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">Status</TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">PNM Name & ID</TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">Bump Match 1</TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">Bump Match 2</TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold w-[138px] bg-slate-50/95 text-right pr-3">Row Tools</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <SortableContext 
-                      items={filteredPnms.map(p => p.id)} 
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {filteredPnms.map(pnm => {
-                        const isHighlighted = Boolean(
-                          (pnm.matchedWith && highlightedActiveIds.has(pnm.matchedWith)) ||
-                          (pnm.secondMatch && highlightedActiveIds.has(pnm.secondMatch))
-                        );
+                    {filteredPnms.length > 0 ? (
+                      <SortableContext 
+                        items={filteredPnms.map(p => p.id)} 
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {filteredPnms.map(pnm => {
+                          const isHighlighted = Boolean(
+                            (pnm.matchedWith && highlightedActiveIds.has(pnm.matchedWith)) ||
+                            (pnm.secondMatch && highlightedActiveIds.has(pnm.secondMatch))
+                          );
 
-                        return (
-                          <SortablePNMRow 
-                            key={pnm.id} 
-                            pnm={pnm} 
-                            pnms={activeRound.pnms}
-                            actives={actives} 
-                            onUnmatch={handleUnmatch} 
-                            onDelete={handleDeletePnm}
-                            onHoverStart={() => setHoveredPnmId(pnm.id)}
-                            onHoverEnd={() => setHoveredPnmId(current => current === pnm.id ? null : current)}
-                            isHighlighted={isHighlighted}
-                            isDimmed={hasLinkedHighlight && !isHighlighted}
-                            dropPreview1={dropWarnings.get(`${pnm.id}-1`)}
-                            dropPreview2={dropWarnings.get(`${pnm.id}-2`)}
-                            highlightedActiveIds={highlightedActiveIds}
-                          />
-                        );
-                      })}
-                    </SortableContext>
+                          return (
+                            <SortablePNMRow 
+                              key={pnm.id} 
+                              pnm={pnm} 
+                              pnms={activeRound.pnms}
+                              actives={actives} 
+                              onUnmatch={handleUnmatch} 
+                              onDelete={handleDeletePnm}
+                              onHoverStart={() => setHoveredPnmId(pnm.id)}
+                              onHoverEnd={() => setHoveredPnmId(current => current === pnm.id ? null : current)}
+                              isHighlighted={isHighlighted}
+                              isDimmed={hasLinkedHighlight && !isHighlighted}
+                              dropPreview1={dropWarnings.get(`${pnm.id}-1`)}
+                              dropPreview2={dropWarnings.get(`${pnm.id}-2`)}
+                              highlightedActiveIds={highlightedActiveIds}
+                            />
+                          );
+                        })}
+                      </SortableContext>
+                    ) : (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="py-12">
+                          <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 border border-dashed border-slate-200 bg-slate-50/70 px-6 py-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">{searchTerm ? 'No results' : 'No PNMs yet'}</div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-slate-700" data-testid="text-pnm-empty-state-title">
+                                {searchTerm ? `No PNMs match “${searchTerm}”.` : `This round doesn't have any PNMs yet.`}
+                              </p>
+                              <p className="text-[11px] text-slate-500" data-testid="text-pnm-empty-state-description">
+                                {searchTerm ? 'Try a different name or ID, or clear the search to see the full list.' : 'Import a list to start assigning bump matches for this round.'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {searchTerm ? (
+                                <Button variant="outline" size="sm" className="h-8 rounded-none px-3 text-[11px]" onClick={() => setSearchTerm('')} data-testid="button-clear-pnm-search">
+                                  Clear Search
+                                </Button>
+                              ) : (
+                                <Button variant="outline" size="sm" className="h-8 rounded-none px-3 text-[11px]" onClick={() => setIsPnmImportOpen(true)} data-testid="button-empty-import-pnms">
+                                  Import PNMs
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </ScrollArea>
@@ -1093,8 +1122,14 @@ export default function Dashboard() {
               </div>
               
               <div className="flex-1 flex gap-2 overflow-hidden">
-                <div className="flex-1 flex flex-col overflow-hidden border border-slate-200/80 bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
-                  <div className="text-[8px] font-bold text-center text-slate-500 uppercase tracking-[0.18em] py-2 border-b border-slate-100 shrink-0 bg-slate-50/80">M1 Pool</div>
+                <div className="flex-1 flex flex-col overflow-hidden border border-sky-200/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98),rgba(255,255,255,0.96))] shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
+                  <div className="flex items-center justify-between gap-2 py-2 px-2.5 border-b border-sky-100 shrink-0 bg-sky-50/70">
+                    <div>
+                      <div className="text-[8px] font-bold text-sky-700 uppercase tracking-[0.18em]">M1 Pool</div>
+                      <div className="text-[9px] text-slate-500">{usedActivesSlot1.size} matched · {actives.length - usedActivesSlot1.size} open</div>
+                    </div>
+                    <Badge variant="outline" className="h-5 rounded-none border-sky-200 bg-white px-1.5 text-[9px] text-sky-700">{actives.length}</Badge>
+                  </div>
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool1Ref}
@@ -1122,8 +1157,14 @@ export default function Dashboard() {
                   </ScrollArea>
                 </div>
                 <div className="w-px bg-slate-200/80 shrink-0" />
-                <div className="flex-1 flex flex-col overflow-hidden border border-slate-200/80 bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
-                  <div className="text-[8px] font-bold text-center text-slate-500 uppercase tracking-[0.18em] py-2 border-b border-slate-100 shrink-0 bg-slate-50/80">M2 Pool</div>
+                <div className="flex-1 flex flex-col overflow-hidden border border-violet-200/70 bg-[linear-gradient(180deg,rgba(248,250,252,0.98),rgba(255,255,255,0.96))] shadow-[0_12px_24px_-22px_rgba(15,23,42,0.22)]">
+                  <div className="flex items-center justify-between gap-2 py-2 px-2.5 border-b border-violet-100 shrink-0 bg-violet-50/70">
+                    <div>
+                      <div className="text-[8px] font-bold text-violet-700 uppercase tracking-[0.18em]">M2 Pool</div>
+                      <div className="text-[9px] text-slate-500">{usedActivesSlot2.size} matched · {actives.length - usedActivesSlot2.size} open</div>
+                    </div>
+                    <Badge variant="outline" className="h-5 rounded-none border-violet-200 bg-white px-1.5 text-[9px] text-violet-700">{actives.length}</Badge>
+                  </div>
                   <ScrollArea 
                     className="flex-1"
                     viewportRef={pool2Ref}
