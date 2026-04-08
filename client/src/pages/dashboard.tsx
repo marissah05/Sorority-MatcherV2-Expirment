@@ -1149,7 +1149,7 @@ export default function Dashboard() {
                       <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">PNM Name & ID</TableHead>
                       <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">Bump Match 1</TableHead>
                       <TableHead className="py-1 h-8 text-[10px] uppercase font-bold bg-slate-50/95">Bump Match 2</TableHead>
-                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold w-[138px] bg-slate-50/95 text-right pr-3">Row Tools</TableHead>
+                      <TableHead className="py-1 h-8 text-[10px] uppercase font-bold w-10 bg-slate-50/95"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

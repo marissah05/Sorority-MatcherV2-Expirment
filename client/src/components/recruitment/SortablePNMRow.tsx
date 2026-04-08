@@ -65,14 +65,6 @@ export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch
     return <Badge className="bg-red-500 hover:bg-red-600 text-white border-none rounded-none text-[9px] h-5 px-1.5 uppercase font-bold text-nowrap">Missing Both</Badge>;
   };
 
-  const hoverSummary = hasDuplicate
-    ? { label: "Duplicate match", className: "border-red-200 bg-red-50 text-red-700" }
-    : filledCount === 2
-      ? { label: "2 of 2 matched", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
-      : filledCount === 1
-        ? { label: "1 spot open", className: "border-amber-200 bg-amber-50 text-amber-700" }
-        : { label: "Needs 2 matches", className: "border-slate-200 bg-slate-50 text-slate-600" };
-
   return (
     <TableRow
       ref={setNodeRef}
@@ -132,21 +124,16 @@ export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch
           dropPreview={dropPreview2}
         />
       </TableCell>
-      <TableCell className="py-0.5 w-[138px]">
-        <div className="flex items-center justify-end gap-2">
-          <div className={cn("hidden whitespace-nowrap border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.14em] transition-opacity duration-150 group-hover:inline-flex", hoverSummary.className)} data-testid={`status-row-summary-${pnm.id}`}>
-            {hoverSummary.label}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
-            onClick={() => onDelete(pnm.id)}
-            data-testid={`button-delete-pnm-${pnm.id}`}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
+      <TableCell className="py-0.5 w-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
+          onClick={() => onDelete(pnm.id)}
+          data-testid={`button-delete-pnm-${pnm.id}`}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </TableCell>
     </TableRow>
   );
