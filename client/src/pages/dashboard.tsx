@@ -985,19 +985,6 @@ export default function Dashboard() {
                     onChange={handleCSVImport} 
                   />
 
-                  <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-import-actives">
-                        <Users className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
-                        {isToolsMenuOpen ? 'Import Actives' : null}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md rounded-none">
-                      <DialogHeader><DialogTitle>Import Active Members</DialogTitle><DialogDescription>Paste names (one per line)</DialogDescription></DialogHeader>
-                      <Textarea placeholder="Sarah Jenkins&#10;Jessica Reynolds" className="min-h-[200px] text-xs rounded-none" value={activePasteData} onChange={(e) => setActivePasteData(e.target.value)} />
-                      <Button onClick={handleActiveImport} className="w-full h-8 text-xs rounded-none">Add Actives</Button>
-                    </DialogContent>
-                  </Dialog>
 
                 </div>
               </ScrollArea>
@@ -1024,6 +1011,19 @@ export default function Dashboard() {
                       <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
                       <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
                       <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isActiveImportOpen} onOpenChange={setIsActiveImportOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 rounded-none border-slate-200 bg-white/95 px-3 text-[11px] text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] hover:bg-slate-50" data-testid="button-import-actives">
+                        <Users className="mr-2 h-3 w-3" />
+                        Import Actives
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md rounded-none">
+                      <DialogHeader><DialogTitle>Import Active Members</DialogTitle><DialogDescription>Paste names (one per line)</DialogDescription></DialogHeader>
+                      <Textarea placeholder="Sarah Jenkins&#10;Jessica Reynolds" className="min-h-[200px] text-xs rounded-none" value={activePasteData} onChange={(e) => setActivePasteData(e.target.value)} />
+                      <Button onClick={handleActiveImport} className="w-full h-8 text-xs rounded-none">Add Actives</Button>
                     </DialogContent>
                   </Dialog>
                 </div>
