@@ -999,19 +999,6 @@ export default function Dashboard() {
                     </DialogContent>
                   </Dialog>
 
-                  <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-white/90 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-import-pnms">
-                        <ClipboardPaste className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
-                        {isToolsMenuOpen ? 'Import PNMs' : null}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md rounded-none">
-                      <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
-                      <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
-                      <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
-                    </DialogContent>
-                  </Dialog>
                 </div>
               </ScrollArea>
             </div>
@@ -1021,11 +1008,24 @@ export default function Dashboard() {
           <ResizablePanel defaultSize={75} minSize={30}>
             <div className="h-full flex flex-col bg-white/92 border border-slate-200/80 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.28)] overflow-hidden">
               <div className="px-3 py-2.5 border-b border-slate-200/80 flex items-center justify-between gap-3 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.86))]">
-                <div className="flex items-center gap-2.5 flex-1">
+                <div className="flex items-center gap-2.5 flex-1 flex-wrap">
                   <div className="h-8 w-8 border border-slate-200 bg-white flex items-center justify-center shadow-sm shrink-0">
                     <Search className="h-3.5 w-3.5 text-slate-500" />
                   </div>
                   <Input placeholder="Search PNMs..." className="h-8 text-[12px] max-w-xs py-0 rounded-none border-slate-200 bg-white/95 shadow-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} data-testid="input-search-pnms" />
+                  <Dialog open={isPnmImportOpen} onOpenChange={setIsPnmImportOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 rounded-none border-slate-200 bg-white/95 px-3 text-[11px] text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.35)] hover:bg-slate-50" data-testid="button-import-pnms">
+                        <ClipboardPaste className="mr-2 h-3 w-3" />
+                        Import PNMs
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md rounded-none">
+                      <DialogHeader><DialogTitle>Import PNMs to {activeRound.name}</DialogTitle><DialogDescription>Format: Name, ID Number (one per line)</DialogDescription></DialogHeader>
+                      <Textarea placeholder="Jane Doe, 12345" className="min-h-[200px] text-xs rounded-none" value={pnmPasteData} onChange={(e) => setPnmPasteData(e.target.value)} />
+                      <Button onClick={handlePnmImport} className="w-full h-8 text-xs rounded-none">Add PNMs to Round</Button>
+                    </DialogContent>
+                  </Dialog>
                 </div>
                 <Badge variant="outline" className="text-[10px] h-6 px-2 rounded-none border-slate-200 bg-slate-50/90 text-slate-600">{activeRound.pnms.length} PNMs</Badge>
               </div>
