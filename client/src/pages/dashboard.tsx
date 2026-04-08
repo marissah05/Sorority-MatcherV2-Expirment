@@ -74,7 +74,7 @@ export default function Dashboard() {
   const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
   const [chainLengthLimit, setChainLengthLimit] = useState(6);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(true);
-  const [isLinkedHoverEnabled, setIsLinkedHoverEnabled] = useState(true);
+  const [isLinkedHoverEnabled, setIsLinkedHoverEnabled] = useState(false);
   const [hoveredActiveId, setHoveredActiveId] = useState<string | null>(null);
   const [hoveredPnmId, setHoveredPnmId] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<PlannerSnapshot[]>([]);
