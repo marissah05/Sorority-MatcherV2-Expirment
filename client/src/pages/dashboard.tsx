@@ -662,6 +662,31 @@ export default function Dashboard() {
     }));
   };
 
+  const handleDeleteActive = (activeId: string) => {
+    setActives(prev => prev.filter(active => active.id !== activeId));
+    setRounds(prev => prev.map(round => ({
+      ...round,
+      pnms: round.pnms.map(pnm => {
+        const updated = {
+          ...pnm,
+          matchedWith: pnm.matchedWith === activeId ? undefined : pnm.matchedWith,
+          secondMatch: pnm.secondMatch === activeId ? undefined : pnm.secondMatch,
+        };
+
+        return {
+          ...updated,
+          status: updated.matchedWith || updated.secondMatch ? 'matched' : 'unmatched',
+        };
+      }),
+    })));
+    setHoveredActiveId(current => current === activeId ? null : current);
+    setHoveredPnmId(null);
+    toast.success("Active removed from both bump pools.", {
+      className: "rounded-none text-xs font-bold",
+      duration: 2200,
+    });
+  };
+
   const generateChains = () => chainAnalysis.chains.map(chain => ({
     starterName: chain.starterName,
     handoffDisplay: chain.handoffDisplay,
@@ -993,6 +1018,10 @@ export default function Dashboard() {
                             isDimmed={hasLinkedHighlight && !isHighlighted}
                             onHoverStart={() => setHoveredActiveId(active.id)}
                             onHoverEnd={() => setHoveredActiveId(current => current === active.id ? null : current)}
+                            onRightClick={(event) => {
+                              event.preventDefault();
+                              handleDeleteActive(active.id);
+                            }}
                           />
                         );
                       })}
@@ -1018,6 +1047,10 @@ export default function Dashboard() {
                             isDimmed={hasLinkedHighlight && !isHighlighted}
                             onHoverStart={() => setHoveredActiveId(active.id)}
                             onHoverEnd={() => setHoveredActiveId(current => current === active.id ? null : current)}
+                            onRightClick={(event) => {
+                              event.preventDefault();
+                              handleDeleteActive(active.id);
+                            }}
                           />
                         );
                       })}
