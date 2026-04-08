@@ -663,6 +663,16 @@ export default function Dashboard() {
   };
 
   const handleDeleteActive = (activeId: string) => {
+    const activeToDelete = actives.find(active => active.id === activeId);
+    if (!activeToDelete) {
+      return;
+    }
+
+    const didConfirmDelete = window.confirm(`Delete ${activeToDelete.name} from the active pool and remove her from both bump assignments?`);
+    if (!didConfirmDelete) {
+      return;
+    }
+
     setActives(prev => prev.filter(active => active.id !== activeId));
     setRounds(prev => prev.map(round => ({
       ...round,
@@ -681,7 +691,7 @@ export default function Dashboard() {
     })));
     setHoveredActiveId(current => current === activeId ? null : current);
     setHoveredPnmId(null);
-    toast.success("Active removed from both bump pools.", {
+    toast.success(`${activeToDelete.name} was removed from both bump pools.`, {
       className: "rounded-none text-xs font-bold",
       duration: 2200,
     });
