@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -48,6 +48,13 @@ interface ChainInfo {
   handoffDisplay: string;
   isCycle: boolean;
   isOverLimit: boolean;
+}
+
+interface PlannerSnapshot {
+  rounds: RoundData[];
+  actives: Active[];
+  activeRoundId: string;
+  chainLengthLimit: number;
 }
 
 export default function Dashboard() {
@@ -70,15 +77,49 @@ export default function Dashboard() {
   const [isLinkedHoverEnabled, setIsLinkedHoverEnabled] = useState(true);
   const [hoveredActiveId, setHoveredActiveId] = useState<string | null>(null);
   const [hoveredPnmId, setHoveredPnmId] = useState<string | null>(null);
+  const [undoStack, setUndoStack] = useState<PlannerSnapshot[]>([]);
 
   const pool1Ref = useRef<HTMLDivElement>(null);
+  const roundNameUndoCapturedRef = useRef(false);
   const pool2Ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
 
+  const createSnapshot = (): PlannerSnapshot => ({
+    rounds: JSON.parse(JSON.stringify(rounds)) as RoundData[],
+    actives: JSON.parse(JSON.stringify(actives)) as Active[],
+    activeRoundId,
+    chainLengthLimit,
+  });
+
+  const pushUndoState = () => {
+    setUndoStack(prev => [...prev, createSnapshot()]);
+  };
+
+  const handleUndo = () => {
+    const previousSnapshot = undoStack[undoStack.length - 1];
+    if (!previousSnapshot) {
+      return;
+    }
+
+    setUndoStack(prev => prev.slice(0, -1));
+    setRounds(previousSnapshot.rounds);
+    setActives(previousSnapshot.actives);
+    setActiveRoundId(previousSnapshot.activeRoundId);
+    setChainLengthLimit(previousSnapshot.chainLengthLimit);
+    setHoveredActiveId(null);
+    setHoveredPnmId(null);
+    setDraggingId(null);
+    setDraggingType(null);
+    toast.success("Undid last planner change", {
+      className: "rounded-none text-xs font-bold"
+    });
+  };
+
   const handleAddRound = () => {
+    pushUndoState();
     const nextRoundNumber = rounds.length + 1;
     const nextRound = { id: `r${nextRoundNumber}`, name: `Round ${nextRoundNumber}`, pnms: [] as PNM[] };
     setRounds(prev => [...prev, nextRound]);
@@ -86,6 +127,11 @@ export default function Dashboard() {
   };
 
   const handleRoundNameChange = (name: string) => {
+    if (!roundNameUndoCapturedRef.current) {
+      pushUndoState();
+      roundNameUndoCapturedRef.current = true;
+    }
+
     setRounds(prev => prev.map(round => (
       round.id === activeRoundId
         ? { ...round, name }
@@ -95,11 +141,17 @@ export default function Dashboard() {
 
   const handleRoundNameBlur = () => {
     if (activeRound.name.trim()) {
+      roundNameUndoCapturedRef.current = false;
       return;
     }
 
     const activeRoundIndex = rounds.findIndex(round => round.id === activeRoundId) + 1;
-    handleRoundNameChange(`Round ${activeRoundIndex || 1}`);
+    setRounds(prev => prev.map(round => (
+      round.id === activeRoundId
+        ? { ...round, name: `Round ${activeRoundIndex || 1}` }
+        : round
+    )));
+    roundNameUndoCapturedRef.current = false;
   };
 
   const usedActivesSlot1 = useMemo(() => new Set(activeRound.pnms.map(p => p.matchedWith).filter(Boolean)), [activeRound]);
@@ -293,6 +345,7 @@ export default function Dashboard() {
 
   const handlePnmImport = () => {
     if (!pnmPasteData.trim()) return;
+    pushUndoState();
     const lines = pnmPasteData.split('\n').filter(line => line.trim());
     
     const newPnms: PNM[] = lines.map((line, index) => {
@@ -392,6 +445,7 @@ export default function Dashboard() {
       return;
     }
 
+    pushUndoState();
     const assignments = buildAutoMatchAssignments(mode);
 
     setRounds(prev => prev.map(round => {
@@ -420,6 +474,7 @@ export default function Dashboard() {
 
   const handleActiveImport = () => {
     if (!activePasteData.trim()) return;
+    pushUndoState();
     const lines = activePasteData.split('\n');
     const newActives: Active[] = lines.map((line, index) => ({
       id: `a_${Date.now()}_${index}`,
@@ -431,6 +486,7 @@ export default function Dashboard() {
   };
 
   const handleDeletePnm = (pnmId: string) => {
+    pushUndoState();
     setRounds(prev => prev.map(r => {
       if (r.id !== activeRoundId) return r;
       return {
@@ -521,6 +577,8 @@ export default function Dashboard() {
           }
         }
         
+        pushUndoState();
+
         // Update Actives
         setActives(Array.from(extractedActives.values()));
 
@@ -635,6 +693,7 @@ export default function Dashboard() {
       }
 
       const projectedDrop = dropWarnings.get(`${overData.pnm.id}-${overData.slot}`);
+      pushUndoState();
 
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
@@ -660,6 +719,7 @@ export default function Dashboard() {
     }
 
     if (draggingType === 'pnm' && active.id !== over.id) {
+      pushUndoState();
       setRounds(prev => prev.map(r => {
         if (r.id !== activeRoundId) return r;
         const oldIndex = r.pnms.findIndex(p => p.id === active.id);
@@ -673,6 +733,7 @@ export default function Dashboard() {
   };
 
   const handleUnmatch = (pnmId: string, slot: 1 | 2) => {
+    pushUndoState();
     setRounds(prev => prev.map(r => {
       if (r.id !== activeRoundId) return r;
       return {
@@ -698,6 +759,7 @@ export default function Dashboard() {
       return;
     }
 
+    pushUndoState();
     setActives(prev => prev.filter(active => active.id !== activeId));
     setRounds(prev => prev.map(round => ({
       ...round,
@@ -820,15 +882,28 @@ export default function Dashboard() {
           </Tabs>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 border border-slate-200/80 bg-white/80 px-2.5 py-1 rounded-none shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]">
-          <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Round Name</span>
-          <Input
-            value={activeRound.name}
-            onChange={(e) => handleRoundNameChange(e.target.value)}
-            onBlur={handleRoundNameBlur}
-            className="h-8 w-44 rounded-none border-slate-200 bg-slate-50/90 text-[12px] shadow-none"
-            data-testid="input-round-name"
-          />
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            className="h-8 rounded-none border-violet-200 bg-violet-50/85 px-3 text-[11px] font-semibold text-violet-700 shadow-[0_10px_22px_-18px_rgba(91,33,182,0.45)] hover:bg-violet-100 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+            data-testid="button-undo-action"
+          >
+            <RotateCcw className="mr-2 h-3.5 w-3.5" />
+            Undo
+          </Button>
+          <div className="flex items-center gap-2 border border-slate-200/80 bg-white/80 px-2.5 py-1 rounded-none shadow-[0_10px_24px_-20px_rgba(15,23,42,0.35)]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Round Name</span>
+            <Input
+              value={activeRound.name}
+              onChange={(e) => handleRoundNameChange(e.target.value)}
+              onBlur={handleRoundNameBlur}
+              className="h-8 w-44 rounded-none border-slate-200 bg-slate-50/90 text-[12px] shadow-none"
+              data-testid="input-round-name"
+            />
+          </div>
         </div>
       </header>
 
@@ -931,7 +1006,10 @@ export default function Dashboard() {
                             min="2" 
                             max="20" 
                             value={chainLengthLimit} 
-                            onChange={(e) => setChainLengthLimit(Math.max(2, Number(e.target.value) || 2))}
+                            onChange={(e) => {
+                              pushUndoState();
+                              setChainLengthLimit(Math.max(2, Number(e.target.value) || 2));
+                            }}
                             className="w-16 h-7 border px-2 text-xs"
                             data-testid="input-chain-limit"
                           />
