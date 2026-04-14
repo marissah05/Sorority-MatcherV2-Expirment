@@ -1,38 +1,161 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import {
+  rounds, actives, pnms, snapshots,
+  type Round, type Active, type Pnm, type Snapshot,
+} from "@shared/schema";
 
-// modify the interface with any CRUD methods
-// you might need
+// ── Shared types ──────────────────────────────────────────────────────────────
 
-export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+export interface PnmState {
+  id: string;
+  name: string;
+  idNumber: string;
+  matchedWith?: string | null;
+  secondMatch?: string | null;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+export interface RoundState {
+  id: string;
+  name: string;
+  sortOrder: number;
+  pnms: PnmState[];
+}
 
-  constructor() {
-    this.users = new Map();
+export interface FullState {
+  rounds: RoundState[];
+  actives: { id: string; name: string }[];
+  activeRoundId: string;
+  chainLengthLimit: number;
+}
+
+// ── getFullState ──────────────────────────────────────────────────────────────
+// Loads all rounds, their PNMs, and the actives pool from the database.
+// Returns null when the database is empty (first launch).
+
+export async function getFullState(): Promise<FullState | null> {
+  const [allRounds, allActives, allPnms] = await Promise.all([
+    db.select().from(rounds).orderBy(rounds.sortOrder),
+    db.select().from(actives),
+    db.select().from(pnms),
+  ]);
+
+  if (allRounds.length === 0 && allActives.length === 0) {
+    return null; // nothing saved yet
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
+  const roundStates: RoundState[] = allRounds.map((r) => ({
+    id: r.id,
+    name: r.name,
+    sortOrder: r.sortOrder,
+    pnms: allPnms
+      .filter((p) => p.roundId === r.id)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        idNumber: p.idNumber,
+        matchedWith: p.matchedWith ?? undefined,
+        secondMatch: p.secondMatch ?? undefined,
+      })),
+  }));
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  return {
+    rounds: roundStates,
+    actives: allActives.map((a) => ({ id: a.id, name: a.name })),
+    activeRoundId: allRounds[0]?.id ?? "",
+    chainLengthLimit: 6,
+  };
+}
+
+// ── saveFullState ─────────────────────────────────────────────────────────────
+// Replaces ALL data in the database with the provided state.
+// Runs inside a transaction so it's all-or-nothing.
+// Order matters: actives → rounds → pnms (FK round_id must exist first).
+
+export async function saveFullState(state: FullState): Promise<void> {
+  await db.transaction(async (tx) => {
+    // 1. Wipe existing data (pnms first because of the FK constraint)
+    await tx.delete(pnms);
+    await tx.delete(rounds);
+    await tx.delete(actives);
+
+    // 2. Insert actives
+    if (state.actives.length > 0) {
+      await tx.insert(actives).values(
+        state.actives.map((a) => ({ id: a.id, name: a.name }))
+      );
+    }
+
+    // 3. Insert rounds
+    if (state.rounds.length > 0) {
+      await tx.insert(rounds).values(
+        state.rounds.map((r) => ({
+          id: r.id,
+          name: r.name,
+          sortOrder: r.sortOrder,
+        }))
+      );
+    }
+
+    // 4. Insert all PNMs (round_id already exists at this point)
+    const allPnms = state.rounds.flatMap((r) =>
+      r.pnms.map((p) => ({
+        id: p.id,
+        name: p.name,
+        idNumber: p.idNumber,
+        roundId: r.id,
+        matchedWith: p.matchedWith ?? null,
+        secondMatch: p.secondMatch ?? null,
+      }))
     );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
+    if (allPnms.length > 0) {
+      await tx.insert(pnms).values(allPnms);
+    }
+  });
 }
 
-export const storage = new MemStorage();
+// ── createSnapshot ────────────────────────────────────────────────────────────
+// Saves the current full state as a named snapshot for later restore.
+
+export async function createSnapshot(id: string, label: string, payload: FullState): Promise<Snapshot> {
+  const [snapshot] = await db
+    .insert(snapshots)
+    .values({ id, label, payload })
+    .returning();
+  return snapshot;
+}
+
+// ── getSnapshots ──────────────────────────────────────────────────────────────
+// Lists all snapshots ordered newest-first. Payload is NOT included (too large
+// for a list view — only fetch it when actually restoring).
+
+export async function getSnapshots(): Promise<Omit<Snapshot, "payload">[]> {
+  const rows = await db
+    .select({
+      id: snapshots.id,
+      label: snapshots.label,
+      createdAt: snapshots.createdAt,
+    })
+    .from(snapshots)
+    .orderBy(snapshots.createdAt);
+  return rows;
+}
+
+// ── restoreSnapshot ───────────────────────────────────────────────────────────
+// Returns the full payload of a snapshot so the frontend can load it.
+// Returns null if the snapshot doesn't exist.
+
+export async function restoreSnapshot(id: string): Promise<FullState | null> {
+  const [row] = await db
+    .select({ payload: snapshots.payload })
+    .from(snapshots)
+    .where(eq(snapshots.id, id));
+  return row ? (row.payload as FullState) : null;
+}
+
+// ── deleteSnapshot ────────────────────────────────────────────────────────────
+// Permanently deletes a snapshot by ID.
+
+export async function deleteSnapshot(id: string): Promise<void> {
+  await db.delete(snapshots).where(eq(snapshots.id, id));
+}
