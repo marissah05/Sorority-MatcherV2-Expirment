@@ -771,6 +771,20 @@ export default function Dashboard() {
     }));
   };
 
+  const handleClearBoth = (pnmId: string) => {
+    pushUndoState();
+    setRounds(prev => prev.map(r => {
+      if (r.id !== activeRoundId) return r;
+      return {
+        ...r,
+        pnms: r.pnms.map(p => {
+          if (p.id !== pnmId) return p;
+          return { ...p, matchedWith: undefined, secondMatch: undefined, status: 'unmatched' };
+        })
+      };
+    }));
+  };
+
   const handleDeleteActive = (activeId: string) => {
     const activeToDelete = actives.find(active => active.id === activeId);
     if (!activeToDelete) {
@@ -1168,7 +1182,8 @@ export default function Dashboard() {
                               pnms={activeRound.pnms}
                               actives={actives} 
                               rowIndex={index}
-                              onUnmatch={handleUnmatch} 
+                              onUnmatch={handleUnmatch}
+                              onClearBoth={handleClearBoth}
                               onDelete={handleDeletePnm}
                               onHoverStart={() => setHoveredPnmId(pnm.id)}
                               onHoverEnd={() => setHoveredPnmId(current => current === pnm.id ? null : current)}

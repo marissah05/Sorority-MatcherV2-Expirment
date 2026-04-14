@@ -5,7 +5,7 @@ import PNMDropZone from "./PNMDropZone";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, GripVertical } from "lucide-react";
+import { Trash2, GripVertical, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SortablePNMRowProps {
@@ -14,6 +14,7 @@ interface SortablePNMRowProps {
   actives: Active[];
   rowIndex: number;
   onUnmatch: (pnmId: string, slot: 1 | 2) => void;
+  onClearBoth: (pnmId: string) => void;
   onDelete: (pnmId: string) => void;
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
@@ -32,7 +33,7 @@ interface SortablePNMRowProps {
   highlightedActiveIds: Set<string>;
 }
 
-export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch, onDelete, onHoverStart, onHoverEnd, isHighlighted, isDimmed, dropPreview1, dropPreview2, highlightedActiveIds }: SortablePNMRowProps) {
+export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch, onClearBoth, onDelete, onHoverStart, onHoverEnd, isHighlighted, isDimmed, dropPreview1, dropPreview2, highlightedActiveIds }: SortablePNMRowProps) {
   const {
     attributes,
     listeners,
@@ -124,16 +125,30 @@ export default function SortablePNMRow({ pnm, pnms, actives, rowIndex, onUnmatch
           dropPreview={dropPreview2}
         />
       </TableCell>
-      <TableCell className="py-0.5 w-10">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
-          onClick={() => onDelete(pnm.id)}
-          data-testid={`button-delete-pnm-${pnm.id}`}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+      <TableCell className="py-0.5 w-20">
+        <div className="flex items-center gap-0.5">
+          {(pnm.matchedWith || pnm.secondMatch) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-amber-600 rounded-none opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onClearBoth(pnm.id)}
+              title="Clear both matches"
+              data-testid={`button-clear-pnm-${pnm.id}`}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-none"
+            onClick={() => onDelete(pnm.id)}
+            data-testid={`button-delete-pnm-${pnm.id}`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );

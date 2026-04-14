@@ -1,0 +1,138 @@
+You are an expert full-stack engineer. 
+
+Before writing ANY code, you must:
+1. Analyze the existing project
+2. Explain your understanding of the current architecture
+3. Create a clear, step-by-step implementation plan
+4. Wait for approval before making major structural changes
+
+---
+
+## 🎯 PROJECT GOAL
+
+Refactor this existing React + Vite application into a production-ready full-stack system with:
+
+- Persistent database (no in-memory state as source of truth)
+- Backend API layer
+- Ability to restore previous rounds (history/versioning)
+- Clean architecture (separation of frontend, backend, and business logic)
+
+---
+
+## ⚠️ CRITICAL RULES
+
+- DO NOT delete or redesign the UI unless absolutely necessary
+- DO NOT rewrite everything at once
+- Work incrementally in small safe steps
+- Ensure the app runs after each major step
+- Preserve all existing functionality
+
+---
+
+## 🧠 CURRENT APP FEATURES (MUST BE PRESERVED)
+
+- Drag and drop matching (dnd-kit)
+- PNMs assigned to two actives (matchedWith, secondMatch)
+- Multiple rounds
+- Chain detection (including cycles and limits)
+- Auto-match (random + balanced)
+- Undo system
+- CSV/XLSX import and export
+- Highlighting linked relationships
+
+---
+
+## 🧱 TARGET ARCHITECTURE
+
+### Backend
+- Node.js backend (Express or similar)
+- REST API
+- Database (PostgreSQL preferred, SQLite acceptable for simplicity)
+
+### Frontend
+- Keep React + Vite + Wouter
+- Replace mock/local state with API calls
+- Maintain current UI behavior
+
+---
+
+## 🗄️ REQUIRED DATA MODELS
+
+Design a database schema that supports:
+
+### Rounds
+- id
+- name
+- createdAt
+- updatedAt
+
+### PNMs
+- id
+- name
+- idNumber
+- roundId
+- matchedWith (activeId)
+- secondMatch (activeId)
+
+### Actives
+- id
+- name
+
+### History (IMPORTANT)
+Must support restoring previous states using ONE of:
+- snapshot-based system (store full round state)
+- OR event-based system (log changes over time)
+
+Explain which approach you choose and why.
+
+---
+
+## 🔁 FUNCTIONAL REQUIREMENTS
+
+- All data must persist in database
+- App must reload without losing data
+- Undo should either:
+  - use database history
+  - OR be replaced with restore functionality
+- Drag and drop must still work
+- Chain detection must remain accurate
+
+---
+
+## 🧠 REFACTOR REQUIREMENTS
+
+- Move business logic (chain detection, matching rules) OUT of React components
+- Create reusable logic modules or backend services
+- Ensure frontend is primarily UI + API interaction
+
+---
+
+## 🚀 IMPLEMENTATION PLAN (REQUIRED FIRST STEP)
+
+Before coding, output:
+
+1. Project structure (folders/files you will create)
+2. Backend design (routes + responsibilities)
+3. Database schema (tables and relationships)
+4. Step-by-step task list in order of execution
+
+Wait for approval before proceeding.
+
+---
+
+## 🧪 DEVELOPMENT APPROACH
+
+After approval:
+- Implement ONE step at a time
+- Explain what you are doing at each step
+- Ensure app still runs before moving on
+
+---
+
+## 🚀 FINAL GOAL
+
+A deployable full-stack application that:
+- runs on Replit
+- has persistent data
+- can be shared via URL
+- allows users to manage and restore rounds reliably
