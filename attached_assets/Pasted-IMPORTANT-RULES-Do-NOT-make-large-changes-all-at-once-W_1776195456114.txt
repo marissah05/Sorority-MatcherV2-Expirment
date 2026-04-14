@@ -1,0 +1,100 @@
+IMPORTANT RULES:
+- Do NOT make large changes all at once
+- Work in SMALL, APPROVABLE STEPS
+- After EACH step, STOP and explain what you did
+- Wait for my approval before continuing
+- Do NOT modify UI components unless explicitly instructed
+- Do NOT break existing functionality (drag/drop, matching, CSV import/export, chain detection)
+
+--------------------------------------------------
+GOAL
+--------------------------------------------------
+
+Convert this app from frontend-only state into a persistent full-stack app with:
+
+1) PostgreSQL database (using Drizzle ORM)
+2) Backend API for loading/saving full app state
+3) Snapshot system to save/restore planner states
+
+We will use a SNAPSHOT-BASED APPROACH:
+- The entire planner state will be saved as a JSON object
+- This matches the existing undo system
+- No event sourcing
+
+--------------------------------------------------
+HIGH LEVEL PLAN (DO NOT EXECUTE ALL AT ONCE)
+--------------------------------------------------
+
+You will guide me through these phases ONE AT A TIME:
+
+PHASE 1 — Database Schema
+PHASE 2 — Database Setup / Migration
+PHASE 3 — Storage Layer (Drizzle queries)
+PHASE 4 — API Routes
+PHASE 5 — Connect Frontend to Backend (load state)
+PHASE 6 — Save State (manual first)
+PHASE 7 — Debounced Autosave
+PHASE 8 — Snapshot System (save/restore UI)
+
+STOP after each phase and wait for approval.
+
+--------------------------------------------------
+CURRENT APP CONTEXT
+--------------------------------------------------
+
+- Frontend state is managed entirely in dashboard.tsx using useState
+- State includes:
+  - rounds
+  - actives
+  - pnms
+  - activeRoundId
+  - chainLengthLimit
+- Undo system uses snapshot copies already
+- Backend exists but is mostly empty
+- Drizzle + pg are already installed
+
+--------------------------------------------------
+PHASE 1 — DATABASE SCHEMA (START HERE)
+--------------------------------------------------
+
+Task:
+Define the database schema in shared/schema.ts
+
+Requirements:
+
+Create the following tables:
+
+1) rounds
+- id (string, primary key)
+- name (text)
+- sort_order (integer)
+
+2) actives
+- id (string, primary key)
+- name (text)
+
+3) pnms
+- id (string, primary key)
+- name (text)
+- id_number (text)
+- round_id (foreign key → rounds.id)
+- matched_with (nullable string)
+- second_match (nullable string)
+
+4) snapshots
+- id (string, primary key)
+- label (text)
+- created_at (timestamp, default now)
+- payload (JSONB) ← FULL APP STATE
+
+IMPORTANT:
+- Use Drizzle schema format
+- Keep it simple and clean
+- Do NOT modify any other files yet
+
+OUTPUT FORMAT:
+1) Show the full updated schema.ts
+2) Briefly explain each table in plain English
+3) STOP and wait for approval
+
+DO NOT CONTINUE to Phase 2 until I approve
