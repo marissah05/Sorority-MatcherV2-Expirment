@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight, RotateCcw, Save } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -65,6 +65,7 @@ const INITIAL_ROUNDS: RoundData[] = [
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [rounds, setRounds] = useState<RoundData[]>(INITIAL_ROUNDS);
   const [activeRoundId, setActiveRoundId] = useState("r1");
   const [actives, setActives] = useState<Active[]>(MOCK_ACTIVES);
@@ -944,6 +945,45 @@ export default function Dashboard() {
     document.body.removeChild(link);
   };
 
+  const saveState = async () => {
+    setIsSaving(true);
+    try {
+      // Build the body the API expects.
+      // PNMs stay nested inside their round — storage.ts flattens them server-side.
+      // Strip the frontend-only `status` field; derive round's sortOrder from its index.
+      const body = {
+        rounds: rounds.map((r, i) => ({
+          id: r.id,
+          name: r.name,
+          sortOrder: r.sortOrder ?? i,
+          pnms: r.pnms.map(p => ({
+            id: p.id,
+            name: p.name,
+            idNumber: p.idNumber,
+            matchedWith: p.matchedWith ?? null,
+            secondMatch: p.secondMatch ?? null,
+          })),
+        })),
+        actives: actives.map(a => ({ id: a.id, name: a.name })),
+        activeRoundId,
+        chainLengthLimit,
+      };
+
+      const res = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("Server error");
+      toast.success("Saved to database");
+    } catch {
+      toast.error("Save failed — please try again");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
 
   if (isLoading) {
@@ -975,6 +1015,17 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={saveState}
+            disabled={isSaving}
+            className="h-7 rounded-none border-emerald-700 bg-emerald-600 px-2.5 text-[10px] font-semibold text-white shadow-[0_12px_24px_-18px_rgba(5,150,105,0.55)] hover:bg-emerald-500 hover:text-white disabled:opacity-60"
+            data-testid="button-save-state"
+          >
+            <Save className="mr-1.5 h-3 w-3" />
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
