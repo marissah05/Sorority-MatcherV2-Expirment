@@ -69,7 +69,7 @@ export async function registerRoutes(
       await saveFullState(parsed.data as FullState);
       res.json({ ok: true });
     } catch (err) {
-      console.error("PUT /api/state error:", err);
+      console.error("SAVE STATE ERROR:", err);
       res.status(500).json({ error: "Failed to save state" });
     }
   });
