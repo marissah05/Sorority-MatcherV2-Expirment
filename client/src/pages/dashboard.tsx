@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight, RotateCcw, Save } from "lucide-react";
+import { Search, ClipboardPaste, UserCheck, Users, Trash2, Download, Upload, GitMerge, ListOrdered, AlertTriangle, Wand2, Settings2, ChevronLeft, ChevronRight, RotateCcw, Save, BookMarked, Clock } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -58,6 +58,12 @@ interface PlannerSnapshot {
   chainLengthLimit: number;
 }
 
+interface SnapshotMeta {
+  id: string;
+  label: string;
+  createdAt: string;
+}
+
 const INITIAL_ROUNDS: RoundData[] = [
   { id: "r1", name: "Round 1", sortOrder: 0, pnms: MOCK_PNMS },
   { id: "r2", name: "Round 2", sortOrder: 1, pnms: MOCK_PNMS.slice(0, 2) },
@@ -77,6 +83,10 @@ export default function Dashboard() {
   const [isPnmImportOpen, setIsPnmImportOpen] = useState(false);
   const [isActiveImportOpen, setIsActiveImportOpen] = useState(false);
   const [isBumpChainsOpen, setIsBumpChainsOpen] = useState(false);
+  const [isSnapshotsOpen, setIsSnapshotsOpen] = useState(false);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const [snapshotList, setSnapshotList] = useState<SnapshotMeta[]>([]);
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [chainLengthLimit, setChainLengthLimit] = useState(6);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(true);
   const [isLinkedHoverEnabled, setIsLinkedHoverEnabled] = useState(false);
@@ -994,6 +1004,105 @@ export default function Dashboard() {
     document.body.removeChild(link);
   };
 
+  // ── Snapshot functions ────────────────────────────────────────────────────
+
+  const loadSnapshots = async () => {
+    try {
+      const res = await fetch("/api/snapshots");
+      const data = await res.json();
+      setSnapshotList(data);
+    } catch {
+      toast.error("Could not load snapshots");
+    }
+  };
+
+  const handleSaveSnapshot = async () => {
+    const label = snapshotLabel.trim();
+    if (!label) return;
+    setIsSavingSnapshot(true);
+    try {
+      const payload = {
+        rounds: rounds.map((r, i) => ({
+          id: r.id,
+          name: r.name,
+          sortOrder: r.sortOrder ?? i,
+          pnms: r.pnms.map(p => ({
+            id: p.id,
+            name: p.name,
+            idNumber: p.idNumber,
+            matchedWith: p.matchedWith ?? null,
+            secondMatch: p.secondMatch ?? null,
+          })),
+        })),
+        actives: actives.map(a => ({ id: a.id, name: a.name })),
+        activeRoundId,
+        chainLengthLimit,
+      };
+      const res = await fetch("/api/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label, payload }),
+      });
+      if (!res.ok) throw new Error();
+      setSnapshotLabel("");
+      toast.success(`Snapshot "${label}" saved`);
+      await loadSnapshots();
+    } catch {
+      toast.error("Failed to save snapshot");
+    } finally {
+      setIsSavingSnapshot(false);
+    }
+  };
+
+  const handleRestoreSnapshot = async (id: string) => {
+    try {
+      const res = await fetch(`/api/snapshots/${id}/restore`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      // Pause autosave while we apply restored state
+      isInitializedRef.current = false;
+
+      const loadedRounds: RoundData[] = (data.rounds ?? []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        sortOrder: r.sortOrder,
+        pnms: r.pnms.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          idNumber: p.idNumber,
+          matchedWith: p.matchedWith ?? undefined,
+          secondMatch: p.secondMatch ?? undefined,
+          status: (p.matchedWith || p.secondMatch) ? 'matched' : 'unmatched',
+        } as PNM)),
+      }));
+
+      setRounds(loadedRounds);
+      setActives(data.actives ?? []);
+      setActiveRoundId(data.activeRoundId ?? loadedRounds[0]?.id ?? "");
+      if (data.chainLengthLimit) setChainLengthLimit(data.chainLengthLimit);
+
+      setIsSnapshotsOpen(false);
+      toast.success("Snapshot restored");
+
+      // Resume autosave after the restored state has settled
+      setTimeout(() => { isInitializedRef.current = true; }, 0);
+    } catch {
+      toast.error("Failed to restore snapshot");
+    }
+  };
+
+  const handleDeleteSnapshot = async (id: string) => {
+    try {
+      const res = await fetch(`/api/snapshots/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setSnapshotList(prev => prev.filter(s => s.id !== id));
+      toast.success("Snapshot deleted");
+    } catch {
+      toast.error("Failed to delete snapshot");
+    }
+  };
+
   const saveState = async () => {
     setIsSaving(true);
     try {
@@ -1254,6 +1363,83 @@ export default function Dashboard() {
                     ref={fileInputRef} 
                     onChange={handleCSVImport} 
                   />
+
+                  <Dialog open={isSnapshotsOpen} onOpenChange={(open) => { setIsSnapshotsOpen(open); if (open) loadSnapshots(); }}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className={`h-10 text-[11px] rounded-none w-full bg-amber-50/95 hover:bg-amber-100 border-amber-200 text-amber-700 shadow-[0_12px_24px_-22px_rgba(245,158,11,0.35)] ${isToolsMenuOpen ? 'justify-start px-3.5' : 'justify-center px-0'}`} data-testid="button-open-snapshots">
+                        <BookMarked className={`w-3 h-3 ${isToolsMenuOpen ? 'mr-2' : ''}`} />
+                        {isToolsMenuOpen ? 'Snapshots' : null}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col rounded-none">
+                      <DialogHeader>
+                        <DialogTitle>Snapshots</DialogTitle>
+                        <DialogDescription>Save and restore named copies of the full planner state.</DialogDescription>
+                      </DialogHeader>
+
+                      {/* Save new snapshot */}
+                      <div className="flex gap-2 pt-1 pb-3 border-b border-slate-100">
+                        <Input
+                          placeholder="Snapshot name…"
+                          value={snapshotLabel}
+                          onChange={e => setSnapshotLabel(e.target.value)}
+                          onKeyDown={e => e.key === "Enter" && handleSaveSnapshot()}
+                          className="h-8 rounded-none text-[12px]"
+                          data-testid="input-snapshot-label"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSaveSnapshot}
+                          disabled={!snapshotLabel.trim() || isSavingSnapshot}
+                          className="h-8 rounded-none bg-amber-500 hover:bg-amber-600 text-white border-none shrink-0 text-[11px]"
+                          data-testid="button-save-snapshot"
+                        >
+                          {isSavingSnapshot ? "Saving…" : "Save Snapshot"}
+                        </Button>
+                      </div>
+
+                      {/* Snapshot list */}
+                      <ScrollArea className="flex-1 -mx-1 px-1">
+                        {snapshotList.length === 0 ? (
+                          <p className="text-center text-[11px] text-slate-400 py-8">No snapshots yet</p>
+                        ) : (
+                          <div className="space-y-1.5 py-1">
+                            {snapshotList.map(snap => (
+                              <div key={snap.id} className="flex items-center justify-between gap-2 border border-slate-100 bg-slate-50/80 px-3 py-2">
+                                <div className="min-w-0">
+                                  <p className="text-[12px] font-semibold text-slate-800 truncate" data-testid={`text-snapshot-label-${snap.id}`}>{snap.label}</p>
+                                  <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    {new Date(snap.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRestoreSnapshot(snap.id)}
+                                    className="h-6 px-2 rounded-none text-[10px] border-violet-300 text-violet-700 hover:bg-violet-50"
+                                    data-testid={`button-restore-snapshot-${snap.id}`}
+                                  >
+                                    Restore
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteSnapshot(snap.id)}
+                                    className="h-6 w-6 p-0 rounded-none text-slate-400 hover:text-red-500"
+                                    data-testid={`button-delete-snapshot-${snap.id}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
 
 
                 </div>
