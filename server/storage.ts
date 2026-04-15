@@ -74,6 +74,9 @@ export async function getFullState(): Promise<FullState | null> {
 
 export async function saveFullState(state: FullState): Promise<void> {
   await db.transaction(async (tx) => {
+    // 0. Acquire advisory lock so only one save transaction runs at a time.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(1)`);
+
     // 1. Wipe existing data atomically — TRUNCATE + CASCADE handles FK order
     //    automatically and is guaranteed to leave no rows behind.
     await tx.execute(sql`TRUNCATE TABLE pnms, rounds, actives RESTART IDENTITY CASCADE`);
