@@ -1133,10 +1133,15 @@ export default function Dashboard() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error("Server error");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("SAVE ERROR:", errorData);
+        throw new Error(errorData.details || errorData.error || "Server error");
+      }
       toast.success("Saved to database");
-    } catch {
-      toast.error("Save failed — please try again");
+    } catch (err) {
+      console.error(err);
+      toast.error("Save failed — " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSaving(false);
     }

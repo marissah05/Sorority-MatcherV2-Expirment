@@ -1,0 +1,74 @@
+ou are debugging a frontend save issue in a React + Express app.
+
+Current problem:
+- When clicking "Save", the UI only shows: "Save failed — please try again"
+- The frontend is NOT showing the real backend error
+- We need to expose the actual error message returned from the API
+
+--------------------------------------------------
+TASK
+--------------------------------------------------
+
+Find the function in the frontend (dashboard.tsx or related file) where the app calls:
+
+fetch("/api/state", { method: "PUT", ... })
+
+Modify ONLY this save function.
+
+--------------------------------------------------
+REQUIREMENTS
+--------------------------------------------------
+
+1) Replace the existing fetch error handling with this pattern:
+
+- Store the response in a variable
+- If response is NOT ok:
+    - Parse response JSON
+    - Extract error details
+    - Throw a new Error with that message
+
+2) Update the catch block to:
+    - Log the error to console
+    - Show the actual error message in the toast
+
+--------------------------------------------------
+IMPLEMENTATION
+--------------------------------------------------
+
+Update the save logic to look like this:
+
+const res = await fetch("/api/state", {
+  method: "PUT",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload)
+});
+
+if (!res.ok) {
+  const errorData = await res.json();
+  console.error("SAVE ERROR:", errorData);
+  throw new Error(errorData.details || errorData.error || "Server error");
+}
+
+In the catch block:
+
+catch (err) {
+  console.error(err);
+  toast.error("Save failed — " + err.message);
+}
+
+--------------------------------------------------
+IMPORTANT RULES
+--------------------------------------------------
+
+- Do NOT change any other logic
+- Do NOT modify backend
+- Do NOT change UI layout
+- Only improve error handling for the save request
+
+--------------------------------------------------
+OUTPUT
+--------------------------------------------------
+
+1) Show the updated save function
+2) Explain what changed briefly
+3) STOP and wait for approval
