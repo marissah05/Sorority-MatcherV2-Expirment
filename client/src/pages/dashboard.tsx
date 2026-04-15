@@ -88,6 +88,8 @@ export default function Dashboard() {
   const roundNameUndoCapturedRef = useRef(false);
   const pool2Ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitializedRef = useRef(false);          // becomes true after boot load settles
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load persisted state from the database on first mount.
   // If the API returns null (empty database), keep the mock data as-is.
@@ -121,10 +123,57 @@ export default function Dashboard() {
       })
       .finally(() => {
         setIsLoading(false);
+        // Defer initialization flag to the next tick so that all the state
+        // updates from the load (setRounds, setActives, etc.) have been
+        // processed and re-rendered before autosave starts watching.
+        setTimeout(() => { isInitializedRef.current = true; }, 0);
       });
   }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Debounced autosave — fires 800ms after the last change to any of these values.
+  // Skipped entirely until isInitializedRef.current is true (set after boot load).
+  // Silent: no toast, fire-and-forget. Manual Save button is the toasted version.
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
+    autosaveTimerRef.current = setTimeout(async () => {
+      try {
+        const body = {
+          rounds: rounds.map((r, i) => ({
+            id: r.id,
+            name: r.name,
+            sortOrder: r.sortOrder ?? i,
+            pnms: r.pnms.map(p => ({
+              id: p.id,
+              name: p.name,
+              idNumber: p.idNumber,
+              matchedWith: p.matchedWith ?? null,
+              secondMatch: p.secondMatch ?? null,
+            })),
+          })),
+          actives: actives.map(a => ({ id: a.id, name: a.name })),
+          activeRoundId,
+          chainLengthLimit,
+        };
+        await fetch("/api/state", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch {
+        // Autosave failures are silent — user can still use manual Save button
+      }
+    }, 800);
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [rounds, actives, activeRoundId, chainLengthLimit]);
+
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
 
   const createSnapshot = (): PlannerSnapshot => ({
