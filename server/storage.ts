@@ -110,8 +110,19 @@ export async function saveFullState(state: FullState): Promise<void> {
         secondMatch: p.secondMatch ?? null,
       }))
     );
-    if (allPnms.length > 0) {
-      await tx.insert(pnms).values(allPnms);
+
+    const seen = new Set<string>();
+    const uniquePnms = allPnms.filter((pnm) => {
+      if (seen.has(pnm.id)) {
+        console.warn("Duplicate PNM IDs detected", pnm.id);
+        return false;
+      }
+      seen.add(pnm.id);
+      return true;
+    });
+
+    if (uniquePnms.length > 0) {
+      await tx.insert(pnms).values(uniquePnms);
     }
   });
 }
