@@ -70,7 +70,10 @@ export async function registerRoutes(
       res.json({ ok: true });
     } catch (err) {
       console.error("SAVE STATE ERROR:", err);
-      res.status(500).json({ error: "Failed to save state" });
+      res.status(500).json({
+        error: "Failed to save state",
+        details: err instanceof Error ? err.message : err
+      });
     }
   });
 
