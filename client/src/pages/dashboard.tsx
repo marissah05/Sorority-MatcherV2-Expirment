@@ -37,6 +37,7 @@ import * as XLSX from "xlsx";
 interface RoundData {
   id: string;
   name: string;
+  sortOrder: number;
   pnms: PNM[];
 }
 
@@ -57,11 +58,14 @@ interface PlannerSnapshot {
   chainLengthLimit: number;
 }
 
+const INITIAL_ROUNDS: RoundData[] = [
+  { id: "r1", name: "Round 1", sortOrder: 0, pnms: MOCK_PNMS },
+  { id: "r2", name: "Round 2", sortOrder: 1, pnms: MOCK_PNMS.slice(0, 2) },
+];
+
 export default function Dashboard() {
-  const [rounds, setRounds] = useState<RoundData[]>([
-    { id: "r1", name: "Round 1", pnms: MOCK_PNMS },
-    { id: "r2", name: "Round 2", pnms: MOCK_PNMS.slice(0, 2) },
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rounds, setRounds] = useState<RoundData[]>(INITIAL_ROUNDS);
   const [activeRoundId, setActiveRoundId] = useState("r1");
   const [actives, setActives] = useState<Active[]>(MOCK_ACTIVES);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -83,6 +87,41 @@ export default function Dashboard() {
   const roundNameUndoCapturedRef = useRef(false);
   const pool2Ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load persisted state from the database on first mount.
+  // If the API returns null (empty database), keep the mock data as-is.
+  useEffect(() => {
+    fetch("/api/state")
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.rounds) {
+          const loadedRounds: RoundData[] = data.rounds.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            sortOrder: r.sortOrder,
+            pnms: r.pnms.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              idNumber: p.idNumber,
+              matchedWith: p.matchedWith ?? undefined,
+              secondMatch: p.secondMatch ?? undefined,
+              status: (p.matchedWith || p.secondMatch) ? 'matched' : 'unmatched',
+            } as PNM)),
+          }));
+          setRounds(loadedRounds);
+          setActives(data.actives ?? []);
+          setActiveRoundId(loadedRounds[0]?.id ?? "");
+          if (data.chainLengthLimit) setChainLengthLimit(data.chainLengthLimit);
+        }
+        // data === null means first launch → keep INITIAL_ROUNDS mock data
+      })
+      .catch(() => {
+        // Network error or server down → keep mock data, show nothing to user
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const activeRound = useMemo(() => rounds.find(r => r.id === activeRoundId)!, [rounds, activeRoundId]);
@@ -144,7 +183,12 @@ export default function Dashboard() {
   const handleAddRound = () => {
     pushUndoState();
     const nextRoundNumber = rounds.length + 1;
-    const nextRound = { id: `r${nextRoundNumber}`, name: `Round ${nextRoundNumber}`, pnms: [] as PNM[] };
+    const nextRound: RoundData = {
+      id: `r${Date.now()}`,
+      name: `Round ${nextRoundNumber}`,
+      sortOrder: rounds.length,
+      pnms: [],
+    };
     setRounds(prev => [...prev, nextRound]);
     setActiveRoundId(nextRound.id);
   };
@@ -901,6 +945,17 @@ export default function Dashboard() {
   };
 
   const filteredPnms = activeRound.pnms.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.idNumber.includes(searchTerm));
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96)_38%,_rgba(241,245,249,1))] font-sans text-slate-600 text-[13px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-slate-400 tracking-wide uppercase text-[10px] font-semibold">Loading planner…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96)_38%,_rgba(241,245,249,1))] flex flex-col font-sans overflow-hidden text-[12px] text-slate-800">
