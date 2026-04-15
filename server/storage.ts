@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   rounds, actives, pnms, snapshots,
@@ -74,10 +74,9 @@ export async function getFullState(): Promise<FullState | null> {
 
 export async function saveFullState(state: FullState): Promise<void> {
   await db.transaction(async (tx) => {
-    // 1. Wipe existing data (pnms first because of the FK constraint)
-    await tx.delete(pnms);
-    await tx.delete(rounds);
-    await tx.delete(actives);
+    // 1. Wipe existing data atomically — TRUNCATE + CASCADE handles FK order
+    //    automatically and is guaranteed to leave no rows behind.
+    await tx.execute(sql`TRUNCATE TABLE pnms, rounds, actives RESTART IDENTITY CASCADE`);
 
     // 2. Insert actives
     if (state.actives.length > 0) {
